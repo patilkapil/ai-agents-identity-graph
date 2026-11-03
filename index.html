@@ -179,6 +179,7 @@ const NODES = [
   {
     id:'user1', type:'USER', label:'Human User',
     orn: null,
+    summary:'This is the person who kicks everything off. They sign in, and from that moment their identity travels with every action the agent takes on their behalf — tucked into the JWT as the sub claim. So even when an agent is three hops deep into a workflow, you can always trace it back to the human who started it. That traceability is the whole point: agents act, but users are accountable.',
     schema:{
       'Identity':[
         {n:'id',    v:'00uABCDEF1234567890', d:'Used as {userId} in /api/v1/users/{userId} and as the sub claim in delegated JWTs'},
