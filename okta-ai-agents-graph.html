@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Okta for AI Agents — Entity Graph</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#252836;--border:#2e3248;
+  --text:#e2e4ed;--dim:#7c81a0;--accent:#6366f1;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap}
+header h1{font-size:14px;font-weight:700;white-space:nowrap}
+.badge{background:#6366f120;border:1px solid #6366f150;color:#818cf8;font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600;white-space:nowrap}
+.source-link{font-size:10px;color:var(--dim);text-decoration:none;white-space:nowrap}
+.source-link:hover{color:var(--accent)}
+.main{display:flex;flex:1;overflow:hidden}
+#gc{flex:1;position:relative;overflow:hidden}
+svg{width:100%;height:100%}
+#panel{width:520px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.ph{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--dim);text-align:center;padding:24px;gap:10px}
+.ph p{font-size:12px;line-height:1.6;max-width:260px}
+.ph svg{opacity:.25}
+#pca{display:none;flex-direction:column;height:100%}
+.phead{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.ptbadge{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.ptitle{font-size:15px;font-weight:600}
+.ptabs{display:flex;border-bottom:1px solid var(--border)}
+.ptab{padding:8px 14px;font-size:13px;cursor:pointer;color:var(--dim);border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
+.ptab.active{color:var(--text);border-bottom-color:var(--accent)}
+.pbody{flex:1;overflow-y:auto;padding:14px 16px}
+.pbody::-webkit-scrollbar{width:4px}
+.pbody::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.fgrp{margin-bottom:14px}
+.fgtitle{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin-bottom:7px}
+.frow{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)20;align-items:flex-start}
+.frow:last-child{border-bottom:none}
+.fname{font-size:12px;color:#818cf8;font-family:'SF Mono','Fira Code',monospace;min-width:145px;flex-shrink:0;line-height:1.6;word-break:break-all}
+.fval{font-size:12px;color:var(--text);font-family:'SF Mono','Fira Code',monospace;word-break:break-all;line-height:1.6}
+.fdesc{font-size:14px;color:#9aa5c8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;line-height:1.65;margin-top:3px}
+.api-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:10px}
+.api-head{display:flex;align-items:center;gap:8px;padding:9px 12px}
+.method{padding:2px 6px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.05em}
+.api-title{font-size:13px;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;line-height:1.4;flex:1}
+.api-docs{font-size:10px;color:var(--accent);text-decoration:none;white-space:nowrap;opacity:.75;flex-shrink:0}
+.api-docs:hover{opacity:1;text-decoration:underline}
+.api-desc{font-size:12px;color:#9aa5c8;padding:0 12px 8px;line-height:1.5;border-top:1px solid var(--border);padding-top:7px;margin-top:-1px}
+.api-body{padding:0 12px 11px}
+.code-block{background:#0d1117;border:1px solid var(--border);border-radius:4px;padding:9px 10px;font-family:'SF Mono','Fira Code',monospace;font-size:11px;color:#a5f3fc;position:relative;margin-top:6px;overflow-x:auto;white-space:pre;line-height:1.6}
+.copy-btn{position:absolute;top:4px;right:4px;background:var(--surface2);border:1px solid var(--border);color:var(--dim);font-size:10px;padding:2px 5px;border-radius:3px;cursor:pointer;transition:color .15s}
+.copy-btn:hover{color:var(--text)}
+.step-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:8px}
+.step-head{display:flex;align-items:center;gap:9px;padding:9px 12px}
+.step-num{width:18px;height:18px;border-radius:50%;background:var(--accent);color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-title{font-size:13px;font-weight:500;line-height:1.45;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+.step-body{padding:0 12px 11px}
+.chain-arrow{text-align:center;color:var(--dim);font-size:14px;margin:2px 0}
+.info{background:#6366f110;border:1px solid #6366f130;border-radius:4px;padding:10px 12px;font-size:13.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;color:#b0bcf8;margin-bottom:10px;line-height:1.75}
+.use-when{background:#10b98110;border:1px solid #10b98130;border-radius:4px;padding:10px 12px;font-size:13.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;color:#6ee7b7;margin-bottom:10px;line-height:1.75}
+.use-when strong{font-weight:700;color:#34d399}
+.orn{background:#6366f110;border:1px solid #6366f130;border-radius:4px;padding:5px 8px;font-family:monospace;font-size:10px;color:#818cf8;word-break:break-all;margin:6px 0}
+.needs-row{display:flex;flex-wrap:wrap;gap:5px;padding:6px 0 8px;align-items:center}
+.needs-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:600;white-space:nowrap}
+.needs-chip.param{background:#f59e0b18;border:1px solid #f59e0b50;color:#fbbf24}
+.needs-chip.token{background:#10b98118;border:1px solid #10b98150;color:#34d399}
+.needs-chip.scope{background:#6366f118;border:1px solid #6366f150;color:#818cf8}
+.needs-chip.role{background:#ef444418;border:1px solid #ef444450;color:#f87171}
+.needs-label{font-size:10.5px;color:var(--dim);font-weight:600;margin-right:2px;flex-shrink:0}
+.link{stroke-width:1.5;fill:none;opacity:.7;cursor:pointer;transition:opacity .15s,stroke-width .15s}
+.link:hover{opacity:1;stroke-width:3}
+.link.sel{opacity:1;stroke-width:3;stroke:#ffffff !important}
+.nc{cursor:pointer}
+.nc:hover circle,.nc:hover rect{filter:brightness(1.3)}
+.nc.sel circle,.nc.sel rect{filter:brightness(1.4) drop-shadow(0 0 7px var(--c,#fff))}
+.etip{position:fixed;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;padding:4px 10px;border-radius:20px;pointer-events:none;z-index:200;white-space:nowrap;display:none;box-shadow:0 2px 8px #0005}
+.elabel{font-size:13px;fill:var(--text);pointer-events:none;text-anchor:middle;dominant-baseline:middle;paint-order:stroke;stroke:var(--bg);stroke-width:7px;stroke-linejoin:round}
+.nlabel{font-size:13px;fill:var(--text);pointer-events:none;text-anchor:middle;dominant-baseline:middle}
+.nid{font-size:8px;fill:var(--dim);pointer-events:none;text-anchor:middle}
+.zc{position:absolute;bottom:16px;left:16px;display:flex;flex-direction:column;gap:4px}
+.zb{width:26px;height:26px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;border-radius:4px;display:flex;align-items:center;justify-content:center}
+kbd{background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:9px;font-family:monospace}
+/* ── Sample Flows drawer ── */
+.flows-btn{background:#6366f120;border:1px solid #6366f150;color:#818cf8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:99px;cursor:pointer;transition:background .15s;white-space:nowrap;margin-left:auto}
+.flows-btn:hover{background:#6366f130}
+#flows-drawer{position:fixed;top:0;right:0;width:600px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:300;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s ease;box-shadow:-4px 0 24px #0006}
+#flows-drawer.open{transform:translateX(0)}
+.fd-hdr{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.fd-hdr-title{font-size:16px;font-weight:700}
+.fd-hdr-sub{font-size:12px;color:var(--dim);margin-top:1px}
+.fd-close{background:none;border:none;color:var(--dim);font-size:22px;line-height:1;cursor:pointer;padding:0 2px}
+.fd-close:hover{color:var(--text)}
+.fd-body{flex:1;overflow-y:auto;padding:12px 14px}
+.fd-body::-webkit-scrollbar{width:4px}
+.fd-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.flow-acc{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:9px}
+.flow-acc-hd{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;background:var(--surface2);user-select:none}
+.flow-acc-hd:hover{background:#2a2d3e}
+.flow-idx{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.flow-name{font-size:14px;font-weight:600;flex:1;line-height:1.4}
+.flow-chev{color:var(--dim);font-size:10px;transition:transform .2s;flex-shrink:0}
+.flow-acc.open .flow-chev{transform:rotate(180deg)}
+.flow-bd{display:none;padding:12px 14px;border-top:1px solid var(--border)}
+.flow-acc.open .flow-bd{display:block}
+.flow-desc{font-size:13.5px;color:#9aa5c8;line-height:1.65;margin-bottom:12px}
+.fstep{background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;overflow:hidden}
+.fstep-hd{display:flex;align-items:center;gap:8px;padding:8px 11px}
+.fstep-n{width:20px;height:20px;border-radius:50%;background:#6366f128;border:1px solid #6366f155;color:#a5b4fc;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.fstep-t{font-size:13.5px;font-weight:600;line-height:1.4}
+.fstep-call{display:flex;align-items:flex-start;gap:8px;padding:0 11px 8px}
+.fstep-path{font-family:'SF Mono','Fira Code',monospace;font-size:12px;color:#a5f3fc;white-space:pre-wrap;word-break:break-all;line-height:1.6}
+.fstep-io{padding:0 11px 9px}
+.io-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);display:block;margin-bottom:4px;margin-top:7px}
+.io-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;padding:3px 0;border-bottom:1px solid var(--border)18}
+.io-row:last-child{border-bottom:none}
+.io-n{font-family:'SF Mono','Fira Code',monospace;font-size:12px;color:#818cf8;min-width:120px;flex-shrink:0;line-height:1.5}
+.io-v{font-size:12px;color:var(--dim);flex:1;min-width:0;word-break:break-all;line-height:1.5}
+.io-link{font-size:11.5px;color:#34d399;white-space:normal;word-break:break-word;flex-basis:100%;padding-left:126px;line-height:1.4}
+.fstep-note{font-size:13px;color:#9aa5c8;padding:0 11px 10px;line-height:1.65;font-style:italic;border-top:1px solid var(--border)25;padding-top:8px;margin-top:2px}
+.fstep-arr{text-align:center;color:var(--dim);font-size:13px;padding:1px 0 2px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Okta for AI Agents — Entity Graph</h1>
+  <button class="flows-btn" onclick="toggleFlows()">Sample Flows ↗</button>
+</header>
+<div class="main">
+  <div id="gc">
+    <svg id="graph"></svg>
+    <div class="zc">
+      <button class="zb" id="zin">+</button>
+      <button class="zb" id="zout">−</button>
+      <button class="zb" id="zfit" style="font-size:10px">⊡</button>
+    </div>
+  </div>
+  <div id="panel">
+    <div class="ph" id="ph">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
+        <line x1="12" y1="2" x2="12" y2="9"/><line x1="12" y1="15" x2="12" y2="22"/>
+        <line x1="2" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="22" y2="12"/>
+      </svg>
+      <p>Click a <strong>node</strong> to see its full schema and API endpoints.<br><br>Click an <strong>edge</strong> to see the identifier join and step-by-step API chain.</p>
+    </div>
+    <div id="pca">
+      <div class="phead" id="phead"></div>
+      <div class="ptabs" id="ptabs"></div>
+      <div class="pbody" id="pbody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// DATA — grounded in Okta developer documentation
+// Sources:
+//  · developer.okta.com/docs/api/secures-ai  (Okta for AI Agents API)
+//  · developer.okta.com/docs/guides/ai-agent-token-exchange/
+//  · developer.okta.com/docs/reference/system-log-query/
+//  · developer.okta.com/docs/concepts/auth-servers/
+//  · developer.okta.com/docs/api/openapi/okta-management (Users, Apps, Logs)
+// ════════════════════════════════════════════════════════════════
+
+const NT = {
+  USER:       {label:'User',              color:'#3b82f6', pre:'00u',  lines:['User']},
+  AI_AGENT:   {label:'AI Agent',          color:'#f59e0b', pre:'wlp',  lines:['AI Agent']},
+  APP:        {label:'OAuth App',         color:'#06b6d4', pre:'0oa',  lines:['OAuth','App']},
+  MCP_SRV:    {label:'MCP Server',        color:'#ef4444', pre:'ems',  lines:['MCP','Server']},
+  VIRT_MCP:   {label:'Agent Gateway',      color:'#84cc16', pre:'wlp',  lines:['Agent','Gateway']},
+  CONN:       {label:'Resource Conn.',    color:'#ec4899', pre:'con',  lines:['Resource','Conn.']},
+  LOG:        {label:'System Log Event',  color:'#94a3b8', pre:'uuid', lines:['System Log','Event']},
+  POLICY:     {label:'Policy Rule',       color:'#f97316', pre:'0pr',  lines:['Policy','Rule']},
+};
+
+const NODES = [
+  {
+    id:'user1', type:'USER', label:'Human User',
+    orn: null,
+    schema:{
+      'Identity':[
+        {n:'id',    v:'00uABCDEF1234567890', d:'Used as {userId} in /api/v1/users/{userId} and as the sub claim in delegated JWTs'},
+        {n:'login', v:'inna@company.com',    d:'Used to search for the user: /api/v1/users?q={login}'},
+      ],
+      'In Tokens / Logs':[
+        {n:'sub (JWT)',      v:'00uABCDEF1234567890', d:'Appears as sub in every delegated access token — links the token back to this user'},
+        {n:'actor.id (log)', v:'00uABCDEF1234567890', d:'Filter System Log by this value to find all actions this user performed'},
+      ],
+    },
+    apis:[
+      {method:'GET', label:'Retrieve user',
+       path:'/api/v1/users/{userId}',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/users/00uABCDEF1234567890\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.users.read', ret:'User: id, login, status, profile, created, lastUpdated'},
+      {method:'GET', label:'Find user events in System Log',
+       path:'/api/v1/logs?filter=actor.id eq "{userId}"',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=actor.id%20eq%20%2200uABCDEF1234567890%22\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.logs.read', ret:'LogEvent[]: use actor.id=wlp… to see delegated agent actions'},
+      {method:'GET', label:'List user\'s app assignments',
+       path:'/api/v1/apps?filter=user.id eq "{userId}"',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/apps?filter=user.id%20eq%20%2200uABCDEF%22\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.apps.read', ret:'Application[] the user has access to'},
+    ],
+  },
+  {
+    id:'agent_orch', type:'AI_AGENT', label:'Orchestrator Agent',
+    summary:'The Orchestrator Agent is the top-level AI agent that a user delegates to. It holds an OAuth identity (wlp… ID), connects to resources via Resource Connections (MCP servers, sub-agents, XAA apps), and acts on behalf of users through token exchange. Every downstream action — whether calling a tool, delegating to a sub-agent, or accessing an app — traces back to this agent\'s identity in System Log.',
+    orn:'orn:okta:directory:{orgId}:workload-principals:ai-agents:wlps2fwpkzi3raviM1d7',
+    schema:{
+      'Identity':[
+        {n:'id',          v:'wlps2fwpkzi3raviM1d7', d:'Used as {agentId} in every AI Agents API path — /ai-agents/{agentId}, /ai-agents/{agentId}/connections, etc.'},
+        {n:'profile.name',v:'CopilotOrchestrator',  d:'Unique display name in the org. Appears in Admin UI and System Log events.'},
+      ],
+      'In Tokens':[
+        {n:'client_id',   v:'wlps2fwpkzi3raviM1d7', d:'The agent\'s id IS its OAuth client_id — use this to find the backing OAuth app via GET /api/v1/apps?q={id}'},
+        {n:'act.sub',     v:'wlps2fwpkzi3raviM1d7', d:'Appears in delegated JWTs when this agent is acting on behalf of a user'},
+      ],
+      'In System Log':[
+        {n:'actor.id',    v:'wlps2fwpkzi3raviM1d7', d:'Filter logs by this to find all actions this agent performed: filter=actor.id eq "wlp..."'},
+        {n:'actor.type',  v:'WorkloadPrincipal',     d:'Use this to distinguish agent events from user events in log queries'},
+        {n:'target[].id', v:'wlps2fwpkzi3raviM1d7', d:'Filter events where this agent is the TARGET (e.g. admin activating or deactivating it): filter=target.id eq "wlp..."'},
+      ],
+    },
+    apis:[
+      {method:'GET', label:'Retrieve AI agent',
+       path:'/workload-principals/api/v1/ai-agents/{agentId}',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.aiAgents.read', role:'SUPER_ADMIN',
+       ret:'AIAgent: id, externalId, status, platform, profile, created, lastUpdated, _embedded'},
+      {method:'GET', label:'List all AI agents',
+       path:'/workload-principals/api/v1/ai-agents',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.aiAgents.read', ret:'Paginated AIAgent[]'},
+      {method:'GET', label:'List agent\'s resource connections',
+       path:'/workload-principals/api/v1/ai-agents/{agentId}/connections',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.aiAgents.read', ret:'ResourceConnection[]: id, orn, status, connectionType, authorizationServer, scopes'},
+      {method:'GET', label:'Discover potential connections',
+       path:'/workload-principals/api/v1/ai-agents/{agentId}/connections/potential',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections/potential\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.aiAgents.read', ret:'Discoverable resources: custom auth servers in org, etc.'},
+      {method:'POST', label:'Activate agent',
+       path:'/workload-principals/api/v1/ai-agents/{agentId}/lifecycle/activate',
+       curl:'curl -X POST \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/lifecycle/activate\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.aiAgents.manage', ret:'AIAgent with status: ACTIVE'},
+      {method:'PATCH', label:'Partial update agent profile',
+       path:'/workload-principals/api/v1/ai-agents/{agentId}',
+       curl:'curl -X PATCH \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7\' \\\n  -H \'Content-Type: application/json\' \\\n  -d \'{"profile":{"description":"Updated description"}}\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.aiAgents.manage', ret:'Updated AIAgent'},
+      {method:'GET', label:'Machine access — list callers configured for this agent',
+       path:'/api/v1/apps/{appId}/grants',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/apps/0oab1234EXAMPLEID5d6/grants\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.apps.read', ret:'OAuth2ScopeConsentGrant[]: confirms which callers have been granted access to call this agent as a resource'},
+      {method:'GET', label:'User access — list users assigned to this agent',
+       path:'/api/v1/apps/{appId}/users',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/apps/0oab1234EXAMPLEID5d6/users\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.apps.read', ret:'AppUser[]: users assigned to the backing app — these are the humans authorised to use this agent'},
+      {method:'GET', label:'Provider — list all agent providers in the org',
+       path:'/workload-principals/api/v1/agent-providers',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/agent-providers\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.aiAgents.read', ret:'AIAgentProvider[]: id, name, providerType, status, importEnabled'},
+      {method:'GET', label:'Provider — list all agents from a specific provider',
+       path:'/workload-principals/api/v1/ai-agents?filter=provider.id eq "{providerId}"',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents?filter=provider.id%20eq%20%22prvABCDEF1234%22\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.aiAgents.read', ret:'AIAgent[]: all agents imported from or registered under this provider'},
+      {method:'GET', label:'Provider — view import history in System Log',
+       path:'/api/v1/logs?filter=eventType sw "app.ai_agent_provider.import"',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=eventType%20sw%20%22app.ai_agent_provider.import%22\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.logs.read', ret:'LogEvent[]: import.start and import.complete events for all provider imports'},
+    ],
+  },
+  {
+    id:'agent_sub', type:'AI_AGENT', label:'Sub-Agent',
+    orn:'orn:okta:directory:{orgId}:workload-principals:ai-agents:wlpzantde10QGRrpF1d7',
+    summary:'In an A2A pattern, the sub-agent is just another AI Agent — the same object type as the orchestrator. What makes it a "sub-agent" is the relationship: the orchestrator holds a Resource Connection of type IDENTITY_ASSERTION_A2A_SERVER that targets it. The sub-agent is a protected resource, not a peer — it has its own auth server, its own audience, and its own set of connections. The orchestrator must token-exchange at the sub-agent\'s auth server to get a token the sub-agent will accept. The full user → orchestrator → sub-agent delegation chain is preserved in the JWT throughout.',
+    schema:{
+      'Identity':[
+        {n:'id', v:'wlpzantde10QGRrpF1d7', d:'Used as {agentId} in /workload-principals/api/v1/ai-agents/{agentId} to retrieve or manage this sub-agent'},
+      ],
+      'In Tokens (delegation chain)':[
+        {n:'client_id',   v:'wlpzantde10QGRrpF1d7', d:'Sub-agent\'s OAuth client_id — same as its wlp... id. Used to look up its backing app via GET /api/v1/apps?q={id}'},
+        {n:'sub',         v:'00uABCDEF1234567890',   d:'Original user preserved throughout the full chain — links this token back to the delegating human'},
+        {n:'act.sub',     v:'wlpzantde10QGRrpF1d7',  d:'Innermost actor = this sub-agent'},
+        {n:'act.act.sub', v:'wlps2fwpkzi3raviM1d7',  d:'Middle actor = the orchestrator that delegated down to this sub-agent'},
+      ],
+      'At the caller (Resource Connection)':[
+        {n:'connectionType', v:'IDENTITY_ASSERTION_A2A_SERVER', d:'The connectionType the orchestrator sets on its Resource Connection when targeting this sub-agent'},
+      ],
+    },
+    apis:[
+      {method:'GET', label:'Retrieve sub-agent',
+       path:'/workload-principals/api/v1/ai-agents/{agentId}',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlpzantde10QGRrpF1d7\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.aiAgents.read', ret:'AIAgent for sub-agent'},
+      {method:'GET', label:'Trace delegation chain in log',
+       path:'/api/v1/logs?filter=actor.id eq "{subAgentId}"',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=actor.id%20eq%20%22wlpzantde10QGRrpF1d7%22\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.logs.read', ret:'Events where sub-agent was the actor; debugContext carries nested act claims'},
+    ],
+  },
+  {
+    id:'app1', type:'APP', label:'Agent OAuth App',
+    orn: null,
+    summary:'Every AI Agent is backed by an OAuth 2.0 Application in Okta\'s app registry. This app plays two roles: (1) Client registration — the app\'s clientId IS the agent\'s wlp... identity and holds the private key or CIMD URL used to authenticate. (2) User access — the app\'s user assignments and sign-on policy control which humans can delegate to this agent. Note: this is a different app from the Resource App (app2) that the agent accesses as an XAA target.',
+    schema:{
+      'Identity':[
+        {n:'id',       v:'0oab1234EXAMPLEID5d6', d:'App registry ID (0oa prefix). Used as {appId} in /api/v1/apps/{appId}, /api/v1/apps/{appId}/users, /api/v1/apps/{appId}/grants'},
+        {n:'clientId', v:'wlps2fwpkzi3raviM1d7', d:'Join key: the app\'s clientId IS the AI Agent\'s id (wlp... prefix). Chain: agent.id → GET /api/v1/apps?q={id} → app.id'},
+      ],
+    },
+    apis:[
+      {method:'GET', label:'Retrieve app by ID',
+       path:'/api/v1/apps/{appId}',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/apps/0oab1234EXAMPLEID5d6\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.apps.read', ret:'Application: id, clientId, name, status, grantTypes, credentials'},
+      {method:'GET', label:'Find app from agent — search by wlp... ID',
+       path:'/api/v1/apps?q={wlpId}',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/apps?q=wlps2fwpkzi3raviM1d7\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.apps.read', ret:'Application whose clientId matches the agent\'s wlp... identity'},
+      {method:'GET', label:'List OAuth 2.0 grant types on the app',
+       path:'/api/v1/apps/{appId}/grants',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/apps/0oab1234EXAMPLEID5d6/grants\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.apps.read', ret:'OAuth2ScopeConsentGrant[]: confirms token-exchange grant is present'},
+    ],
+  },
+  {
+    id:'app2', type:'APP', label:'Resource App',
+    orn:'orn:okta:idp:{orgId}:apps:salesforce:0oafxqCAJWEXAMPLE',
+    summary:'The target here is an app that\'s registered in Okta\'s app catalog — it has a 0oa… ID and shows up in the Applications section of the admin console. It could be Salesforce, ServiceNow, a custom OIDC app, or anything in the OIN. The agent accesses it via Cross-App Access (XAA): it presents its own token and Okta exchanges it for one scoped to that specific app, on behalf of the delegating user. The key distinction from Custom AS Resource: this is an Okta-managed app instance, not a raw API. XAA must be explicitly enabled on the target app.',
+    schema:{
+      'Identity':[
+        {n:'id',      v:'0oafxqCAJWEXAMPLE',   d:'App registry ID (0oa prefix). Distinct from the agent\'s backing OAuth app — this is a separate OIN, OIDC, or SAML app in the org catalogue.'},
+        {n:'orn',     v:'orn:okta:idp:{orgId}:apps:salesforce:0oafxqCAJWEXAMPLE', d:'The ORN that appears in the Resource Connection\'s resource.orn field. Parse the last two segments to get appType and appId.'},
+        {n:'label',   v:'A0_XAA Resource App',  d:'Display name shown in the Okta Admin UI under Resource connections > Connected resource column.'},
+        {n:'appType', v:'SAML | OIDC | OIN',    d:'Visible in UI as "App instance (SAML)" or "App instance (OIDC)". Determines the token exchange protocol Okta uses during XAA.'},
+      ],
+      'XAA Configuration':[
+        {n:'crossAppAccess.enabled', v:'true',           d:'XAA must be explicitly enabled on the target app before any agent can add it as a resource connection. Disabled by default — this is the most common reason XAA connections fail.'},
+        {n:'allowedScopes',          v:'["xaa:read"]',   d:'Scopes the app exposes for XAA. xaa:read is the standard read-only scope as seen in the Okta Admin UI Resource connections detail column.'},
+      ],
+      'In Resource Connection':[
+        {n:'connectionType',     v:'IDENTITY_ASSERTION_APP_INSTANCE', d:'The connectionType on the agent\'s Resource Connection object that points to this app.'},
+        {n:'resource.orn',       v:'orn:okta:idp:{orgId}:apps:salesforce:0oafxqCAJWEXAMPLE', d:'How you navigate from a Resource Connection back to this app — parse the ORN last two segments to get appType and appId.'},
+        {n:'clientIdAtResource', v:'0oafxqCAJWEXAMPLE', d:'The app\'s own client ID at the resource. Okta uses this when issuing the exchanged token for the agent.'},
+      ],
+    },
+    apis:[
+      {method:'GET', label:'Retrieve the resource app by ID',
+       path:'/api/v1/apps/{appId}',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/apps/0oafxqCAJWEXAMPLE\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.apps.read', ret:'Application: id, label, status, settings including crossAppAccess configuration'},
+      {method:'GET', label:'Navigate from Resource Connection ORN to this app',
+       path:'/api/v1/apps/{appId}',
+       curl:'# Step 1 — get the agent\'s connections\ncurl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\'\n# Step 2 — filter for IDENTITY_ASSERTION_APP_INSTANCE, parse appId from resource.orn\n# ORN format: orn:okta:idp:{orgId}:apps:{appType}:{appId}\n# Step 3 — retrieve the app\ncurl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/apps/0oafxqCAJWEXAMPLE\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.apps.read', ret:'The OIN/SAML/OIDC app acting as the XAA resource'},
+    ],
+  },
+  {
+    id:'mcp1', type:'MCP_SRV', label:'MCP Server',
+    summary:'Think of an MCP Server as a toolbox the agent can reach into. The agent can connect to it directly (one connection per server) or through the Agent Gateway (one connection, many servers behind it). Direct is simpler for small setups; the gateway is better when you have multiple tool servers and want to manage them centrally.',
+    orn:'orn:okta:directory:{orgId}:resource-servers:mcp:ems8nUa7p0g4zrZbs2f4',
+    schema:{
+      'Identity':[
+        {n:'id',          v:'ems8nUa7p0g4zrZbs2f4',           d:'MCP Server ID — ems prefix'},
+        {n:'orn',         v:'orn:okta:directory:{orgId}:resource-servers:mcp:ems8nUa7p0g4zrZbs2f4', d:''},
+        {n:'status',      v:'ACTIVE',                         d:'ACTIVE | INACTIVE'},
+        {n:'displayName', v:'Internal Tools MCP',             d:'1–255 chars'},
+        {n:'resourceUrl', v:'https://mcp.company.internal',   d:'URI of the MCP server — must have .well-known/oauth-protected-resource'},
+      ],
+      'Timestamps':[
+        {n:'created',     v:'2026-06-01T10:00:00.000Z', d:''},
+        {n:'lastUpdated', v:'2026-10-15T12:00:00.000Z', d:''},
+      ],
+      'OAuth Requirement':[
+        {n:'clientId',     v:'0oac9876MCPCLIENT',   d:'Confidential client — dynamic registration NOT supported'},
+        {n:'authMethod',   v:'client_secret_basic',  d:''},
+      ],
+    },
+    apis:[
+      {method:'GET', label:'List MCP servers',
+       path:'/workload-principals/api/v1/resource-servers/mcp-servers',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/resource-servers/mcp-servers\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.resourceServers.mcpServers.read', role:'SUPER_ADMIN', ret:'MCPServer[]'},
+      {method:'POST', label:'Activate MCP server',
+       path:'/workload-principals/api/v1/resource-servers/mcp-servers/{mcpServerId}/lifecycle/activate',
+       curl:'curl -X POST \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/resource-servers/mcp-servers/ems8nUa7p0g4zrZbs2f4/lifecycle/activate\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.resourceServers.mcpServers.manage', ret:'MCPServer with status: ACTIVE'},
+    ],
+  },
+  {
+    id:'vmcp1', type:'VIRT_MCP', label:'Agent Gateway',
+    orn:'orn:okta:directory:{orgId}:workload-principals:virtual-mcp-servers:wlp1aB2cD3eF4gH5iJ6k',
+    summary:'The Agent Gateway is a single front door to multiple MCP tool servers. Instead of the agent maintaining a separate connection to every tool server, it connects once to the gateway and the gateway routes calls to whichever server has the right tool. It also handles identity — every tool call carries the agent\'s token so there\'s a clear audit trail of who called what. Good choice when you have more than a couple of tool servers and want one place to manage access.',
+    schema:{
+      'Identity':[
+        {n:'id',                  v:'wlp1aB2cD3eF4gH5iJ6k',  d:'Agent Gateway ID — wlp prefix (it is a WorkloadPrincipal, same namespace as AI agents)'},
+        {n:'orn',                 v:'orn:okta:directory:{orgId}:workload-principals:virtual-mcp-servers:wlp1aB2cD3eF4gH5iJ6k', d:'Canonical cross-system identifier'},
+        {n:'status',              v:'ACTIVE',                 d:'INACTIVE | ACTIVE — must activate before agents can connect'},
+        {n:'profile.displayName', v:'Unified Internal Tools', d:'Human-readable name (required)'},
+        {n:'profile.description', v:'Aggregates HR, Calendar, Code MCP servers', d:'Optional description'},
+        {n:'resourcePath',        v:'internal-tools',         d:'URI path suffix forming the final gateway URL: {basePath}/mcp/{resourcePath}. Pattern: ^[a-zA-Z0-9\\-._~]+$ (1–64 chars)'},
+      ],
+      'Gateway URL':[
+        {n:'basePath (org setting)',  v:'https://{subdomain}.gateway.okta.com', d:'From GET /workload-principals/api/v1/virtual-mcp-settings → basePath'},
+        {n:'full gateway endpoint',   v:'https://{subdomain}.gateway.okta.com/mcp/internal-tools', d:'The URL exposed to AI agents. Composed of basePath + /mcp/ + resourcePath'},
+      ],
+      'Org-Level Limits (virtual-mcp-settings)':[
+        {n:'limits.maxVirtualMCPs',                 v:'10',  d:'Max Agent Gateways per org'},
+        {n:'limits.maxCapabilitiesPerVirtualMCP',   v:'50',  d:'Max tool capabilities per gateway'},
+        {n:'limits.maxResourceServersPerVirtualMCP',v:'5',   d:'Max downstream MCP servers per gateway'},
+      ],
+    },
+    apis:[
+      {method:'GET', label:'List Agent Gateways',
+       path:'/workload-principals/api/v1/virtual-mcp-servers',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/virtual-mcp-servers\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.resourceServers.virtualMcpServers.read', ret:'VirtualMCPServer[]'},
+      {method:'POST', label:'Create Agent Gateway',
+       path:'/workload-principals/api/v1/virtual-mcp-servers',
+       curl:'curl -X POST \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/virtual-mcp-servers\' \\\n  -H \'Authorization: Bearer {accessToken}\' \\\n  -H \'Content-Type: application/json\' \\\n  -d \'{"resourcePath":"internal-tools","profile":{"displayName":"Unified Internal Tools","description":"Aggregates HR, Calendar, Code MCP servers"}}\'',
+       scope:'okta.resourceServers.virtualMcpServers.manage', ret:'VirtualMCPServer: id, orn, status, resourcePath, profile'},
+      {method:'POST', label:'Activate gateway (lifecycle)',
+       path:'/workload-principals/api/v1/virtual-mcp-servers/{virtualMcpId}/lifecycle/activate',
+       curl:'curl -X POST \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/virtual-mcp-servers/wlp1aB2cD3eF4gH5iJ6k/lifecycle/activate\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.resourceServers.virtualMcpServers.manage', ret:'VirtualMCPServer with status ACTIVE'},
+      {method:'GET', label:'List downstream MCP connections',
+       path:'/workload-principals/api/v1/virtual-mcp-servers/{virtualMcpId}/connections',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/virtual-mcp-servers/wlp1aB2cD3eF4gH5iJ6k/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.resourceServers.virtualMcpServers.read', ret:'Downstream connections to real MCP servers (STS_ACCESS_TOKEN type only)'},
+      {method:'GET', label:'List capabilities for a connection',
+       path:'/workload-principals/api/v1/virtual-mcp-servers/{virtualMcpId}/connections/{connectionId}/capabilities',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/virtual-mcp-servers/wlp1aB2cD3eF4gH5iJ6k/connections/rc0xyz1234example/capabilities?expand=inputSchema\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.resourceServers.virtualMcpServers.read', ret:'Tool capabilities exposed by this downstream connection'},
+      {method:'GET', label:'Get org gateway settings',
+       path:'/workload-principals/api/v1/virtual-mcp-settings',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/virtual-mcp-settings\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.resourceServers.virtualMcpServers.read', ret:'basePath (gateway URL), limits, features, supportedConnectionTypes'},
+      {method:'GET', label:'List delegation links (who can connect to this gateway)',
+       path:'/workload-principals/api/v1/delegation-links',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/delegation-links\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.resourceServers.virtualMcpServers.read', ret:'DelegationLink[]: declares which OAuth clients (agents) are authorized to delegate to a vMCP on behalf of users'},
+    ],
+  },
+  {
+    id:'conn1', type:'CONN', label:'Resource Connection',
+    orn:null,
+    summary:'Think of a Resource Connection as the agent\'s contact list entry for something it needs to talk to. Before the orchestrator can reach anything outside itself — a tool server, an enterprise app, another agent, a custom API — it needs one of these entries. Each connection says: here\'s what I\'m connecting to, and here\'s how I get a token to get in. The five connection types just describe what\'s on the other end. That\'s really all there is to it.',
+    schema:{
+      'The 5 connection types':[
+        {n:'Enterprise app',       v:'', d:'Connects to an OIN, OIDC, or SAML app in your org. Used for Cross App Access (XAA) — the agent acts on behalf of the user inside that app.'},
+        {n:'MCP server (direct)',  v:'', d:'Points directly at one specific MCP tool server. Simple setup, but each new tool server needs its own connection entry.'},
+        {n:'Agent Gateway',        v:'', d:'One connection that covers all the MCP servers sitting behind the Agent Gateway. Better for larger setups where you want to add/remove tools without touching the agent.'},
+        {n:'Custom auth server',   v:'', d:'Lets the agent call an internal API that\'s protected by a custom Okta authorization server in your tenant.'},
+        {n:'Another AI agent',     v:'', d:'Connects to a sub-agent. The orchestrator delegates work to it — the full user → orchestrator → sub-agent chain is preserved in the token.'},
+      ],
+      'What every connection has':[
+        {n:'id',             v:'rc0xyz1234example',   d:'Every connection gets an rc0… ID. This is how you look it up or reference it in the API.'},
+        {n:'connectionType', v:'(one of the 5 above)', d:'Tells Okta what kind of resource is on the other end and which token flow to use.'},
+        {n:'status',         v:'ACTIVE | INACTIVE',   d:'Has to be ACTIVE before the agent can actually use it.'},
+        {n:'resource.orn',   v:'orn:okta:...',        d:'Points at the specific resource this connection targets — the app, tool server, agent, or auth server.'},
+        {n:'authorizationServer.issuerUrl', v:'https://{domain}/oauth2/aus…', d:'Where the agent goes to exchange its token for one scoped to this resource.'},
+      ],
+    },
+    apis:[
+      {method:'GET', label:'See everything this agent is connected to',
+       path:'/workload-principals/api/v1/ai-agents/{agentId}/connections',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.aiAgents.read', ret:'ResourceConnection[] — one entry per connected resource; check connectionType to see what each one is'},
+      {method:'GET', label:'Inspect a specific connection',
+       path:'/workload-principals/api/v1/ai-agents/{agentId}/connections/{connectionId}',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections/rc0xyz1234example\' \\\n  -H \'Authorization: Bearer {accessToken}\'',
+       scope:'okta.aiAgents.read', ret:'ResourceConnection: connectionType, resource.orn, authorizationServer.issuerUrl, status, scopes'},
+    ],
+  },
+  {
+    id:'conn_as', type:'CONN', label:'Custom AS Resource',
+    orn:null,
+    summary:'The target here is an internal API that is NOT registered as an app in Okta — it doesn\'t have a 0oa… ID, it won\'t appear in the Applications section. Instead, it\'s just a service that validates tokens issued by a specific custom authorization server (aus…, defined under Security → API). The agent exchanges its token for one scoped to that auth server\'s audience, then calls the API directly. The key distinction from Resource App: there\'s no Okta app entry for this resource — only an auth server protecting it.',
+    schema:{
+      'Identity':[
+        {n:'id',             v:'rc0authsrvEXAMPLE',                    d:'Resource Connection ID — rc0 prefix'},
+        {n:'connectionType', v:'IDENTITY_ASSERTION_CUSTOM_AS',         d:'Custom authorization server resource type. The agent accesses APIs protected by this auth server. Different from STS_ACCESS_TOKEN (gateway) and IDENTITY_ASSERTION_APP_INSTANCE (XAA app).'},
+        {n:'status',         v:'ACTIVE',                               d:'ACTIVE | INACTIVE'},
+        {n:'resource.orn',   v:'orn:okta:idp:{orgId}:authorization_servers:ausXXXXXXXXXXXXXXX', d:'ORN of the target custom authorization server whose protected resources the agent will access.'},
+        {n:'resourceIndicator', v:'https://{domain}/oauth2/ausXXXXX', d:'The issuer URL of the target auth server — used as the resource audience in the token exchange request.'},
+      ],
+      'Token Exchange':[
+        {n:'authorizationServer.issuerUrl', v:'https://{domain}/oauth2/aus…', d:'The Okta authorization server where the token exchange happens — the agent presents its current token here and gets back one scoped to the target API\'s audience.'},
+        {n:'scopes',                        v:'["api:read","api:write"]', d:'Scopes defined on the target authorization server that the agent is granted access to.'},
+      ],
+      'UI Label':[
+        {n:'UI name',        v:'Authorization server',  d:'Shown as "Authorization server" in the Okta Admin UI "Add resource connection" dialog. One of 5 resource types: Agent Gateway | Authorization server | Application | MCP server | Connect to another AI agent.'},
+      ],
+    },
+    apis:[
+      {method:'GET', label:'Find auth server resource connections on agent',
+       path:'/workload-principals/api/v1/ai-agents/{agentId}/connections',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\'\n# Filter: connectionType == "IDENTITY_ASSERTION_CUSTOM_AS"',
+       scope:'okta.aiAgents.read', ret:'Connection[] — filter for connectionType=IDENTITY_ASSERTION_CUSTOM_AS'},
+      {method:'GET', label:'Retrieve the target authorization server',
+       path:'/api/v1/authorizationServers/{authServerId}',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/authorizationServers/ausXXXXXXXXXXXXXXX\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.authorizationServers.read', ret:'AuthorizationServer: id, name, issuer, audiences, status'},
+    ],
+  },
+  {
+    id:'log1', type:'LOG', label:'System Log Event',
+    orn: null,
+    summary:'System Log is Okta\'s audit trail for everything that happens in your tenant. Every agent action — token exchanges, resource connection changes, activations, delegated API calls — shows up here as a structured event. It\'s how you answer questions like "which user triggered this agent?", "did this token exchange succeed?", or "who changed this connection?". If something goes wrong in an agentic workflow, System Log is the first place to look.',
+    schema:{
+      'Event Identity':[
+        {n:'uuid',           v:'f790999f-a8c0-11ef-8a28-ab1234567890', d:'Unique event ID — use for deduplication across polling/streams'},
+        {n:'published',      v:'2026-10-29T08:42:33.444Z',             d:'ISO 8601 — primary sort/filter key'},
+        {n:'eventType',      v:'app.ai_agent.activate',                d:'Dot-separated hierarchy — primary rule key for SIEMs'},
+        {n:'severity',       v:'INFO',                                  d:'INFO | WARN | ERROR | DEBUG'},
+        {n:'displayMessage', v:'AI agent activated',                   d:'Human-readable summary'},
+      ],
+      'actor — who did it':[
+        {n:'actor.id',          v:'00uABCDEF1234567890',   d:'User or agent wlp... ID that performed the action'},
+        {n:'actor.type',        v:'User',                  d:'User | WorkloadPrincipal | Client | System'},
+        {n:'actor.alternateId', v:'admin@company.com',     d:'Human-readable identifier for the actor'},
+        {n:'actor.displayName', v:'Admin User',            d:''},
+      ],
+      'target — what was acted on':[
+        {n:'target[0].id',          v:'wlps2fwpkzi3raviM1d7', d:'Entity that was acted upon'},
+        {n:'target[0].type',        v:'WorkloadPrincipal',     d:'User | WorkloadPrincipal | AppInstance | Group | Policy…'},
+        {n:'target[0].alternateId', v:'CopilotOrchestrator',   d:'Human-readable target name'},
+        {n:'target[0].displayName', v:'CopilotOrchestrator',   d:''},
+      ],
+      'Correlation Fields':[
+        {n:'transaction.id',                          v:'WpkhjWgBAAAA-abc123',  d:'Groups ALL events from the same API call'},
+        {n:'transaction.type',                        v:'WEB',                  d:'WEB | JOB'},
+        {n:'authenticationContext.externalSessionId', v:'102bZDWR16MQ2...',     d:'Groups events within the same user session'},
+        {n:'authenticationContext.rootSessionId',     v:'10294ADF...',          d:'Groups events across related sessions from same root'},
+        {n:'request.ipChain[0].ip',                  v:'10.0.0.1',             d:'Originating IP'},
+      ],
+      'Debug':[
+        {n:'debugContext.debugData.requestUri',  v:'/workload-principals/api/v1/ai-agents/wlps.../lifecycle/activate', d:''},
+        {n:'debugContext.debugData.behaviors',   v:'{New Geo=POSITIVE}',   d:'Behavioral analytics (ThreatInsight)'},
+        {n:'X-Okta-Request-Id (header)',         v:'WpkhjWgBAAAA-abc123',  d:'Present in every API response — correlates to transaction.id in log'},
+      ],
+      'Event Taxonomy — AI Agent Categories':[
+        {n:'app.ai_agent.*',            v:'Agent lifecycle',          d:'activate · deactivate · update · create · delete · import.start · import.complete — all lifecycle changes to AI Agent (wlp…) entities. Primary events for governance dashboards and agent inventory.'},
+        {n:'app.ai_agent_connection.*', v:'Resource connections',     d:'connection.create · connection.update · connection.activate · connection.deactivate — tracks when agents gain or lose access to resources (XAA apps, MCP servers, A2A targets). Key signal for entitlement review and access change notifications.'},
+        {n:'app.ai_agent_provider.*',   v:'Provider / supply chain',  d:'import.start · import.complete — bulk import events from agent providers (Anthropic, OpenAI, Copilot, Custom). Used for supply chain auditing and tracking which provider introduced which agents.'},
+        {n:'system.token.*',            v:'Token exchange & grants',  d:'token.grant · token.revoke · token.introspect — every delegation token issued to an agent. debugContext carries the full JWT act chain (sub=user, act.sub=agent, act.act.sub=orchestrator). Single most important event type for delegation tracing and anomaly detection.'},
+        {n:'app.mcp.*',                 v:'MCP tool calls',           d:'server.register · connection.create · tool.invoke — tracks tool usage through Agent Gateway and individual MCP servers. Links back to the delegating user via sub claim in the associated token. Primary trail for user-level tool usage auditing.'},
+        {n:'app.oauth2.*',              v:'OAuth / app credential',   d:'token.grant · authorize.code · token.revoke — OAuth events from the backing OAuth app (0oa…). Correlate actor.id (wlp…) or target.id to identify which agent triggered the OAuth event.'},
+        {n:'policy.rule.*',             v:'Policy evaluation',        d:'policy.evaluate · rule.matched — authorization server policy rule evaluations. Shows which rule granted (or denied) a token exchange request, and under what conditions.'},
+        {n:'user.authentication.*',     v:'User auth (delegation root)', d:'user.authentication.sso · user.authentication.auth_via_mfa — the upstream user auth events that precede an agent token exchange. Correlate via authenticationContext.externalSessionId to stitch the full user → agent delegation chain.'},
+      ],
+    },
+    apis:[
+      {method:'GET', label:'List System Log events',
+       desc:'Starting point — pull recent events across the whole tenant. Use limit + after (cursor) to paginate forward in time.',
+       path:'/api/v1/logs',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?limit=100\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.logs.read', ret:'LogEvent[], Link headers for cursor pagination'},
+      {method:'GET', label:'Filter by actor (user or agent)',
+       desc:'Use when you want to see everything a specific agent (or user) DID — every token exchange, resource access, or lifecycle change it initiated. Supply the wlp... or 00u... ID.',
+       path:'/api/v1/logs?filter=actor.id eq "{id}"',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=actor.id%20eq%20%22wlps2fwpkzi3raviM1d7%22\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.logs.read', ret:'Events where this user or agent was the actor'},
+      {method:'GET', label:'Filter by target entity',
+       desc:'Use when you want to see what HAPPENED TO a specific agent — activations, deactivations, config changes, or admin actions targeting it. The agent is the object of the action, not the one doing it.',
+       path:'/api/v1/logs?filter=target.id eq "{id}"',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=target.id%20eq%20%22wlps2fwpkzi3raviM1d7%22\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.logs.read', ret:'Events where this entity was the target of an action'},
+      {method:'GET', label:'Correlate by transaction ID',
+       desc:'Use when you have one event and want all the other events that were part of the same API call. The transaction.id matches the X-Okta-Request-Id response header — useful for tracing a single token exchange end-to-end.',
+       path:'/api/v1/logs?filter=transaction.id eq "{txId}"',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=transaction.id%20eq%20%22WpkhjWgBAAAA-abc123%22\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.logs.read', ret:'All events from the same API call (by X-Okta-Request-Id / transaction.id)'},
+      {method:'GET', label:'Filter by AI agent event types',
+       desc:'Use to get a focused view of all agent lifecycle events in the org — activations, imports, connection changes. The sw (starts with) operator catches all subtypes under app.ai_agent.*.',
+       path:'/api/v1/logs?filter=eventType sw "app.ai_agent"',
+       curl:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=eventType%20sw%20%22app.ai_agent%22\' \\\n  -H \'Authorization: SSWS {apiToken}\'',
+       scope:'okta.logs.read', ret:'All AI agent lifecycle events (activate, deactivate, import, etc.)'},
+    ],
+  },
+];
+
+const EDGES = [
+  {
+    s:'user1', t:'agent_orch',
+    label:'delegates via\ntoken exchange',
+    rel:'User → Orchestrator Agent (ID-JAG delegation)',
+    corr:'JWT sub = User.id (00u…)\nJWT act.sub = Agent.id (wlp…)',
+    desc:'When a user triggers an agentic workflow, the orchestrator agent performs a token exchange at the custom authorization server. The resulting access token carries sub=userId (the human principal) and act.sub=agentId (the acting agent). The sub_profile claim distinguishes human principals from agent principals.',
+    useWhen:'You need to understand how a human user delegates authority to an AI agent — the complete token exchange flow showing which JWT claims carry the user\'s identity forward into every downstream agent action.',
+    claims:{'sub':'00uABCDEF1234567890  ← User.id','sub_profile':'"service"  ← user is delegating','act.sub':'wlps2fwpkzi3raviM1d7  ← Orchestrator Agent.id','act.sub_profile':'"ai_agent"','client_id':'wlps2fwpkzi3raviM1d7','iss':'https://{domain}/oauth2/aus5rb5mt2H3d1TJd0h7'},
+    chain:[
+      {s:'1. User authenticates — get ID token',d:'User signs in; receive id_token as subject_token for the exchange.',c:'curl -X POST \\\n  \'https://{yourOktaDomain}/oauth2/aus5rb5mt2H3d1TJd0h7/v1/authorize\' \\\n  ... (standard OIDC authorization code flow)'},
+      {s:'2. Agent exchanges user token for delegated access token',d:'Token exchange at the custom auth server. The resulting token has sub=userId, act.sub=agentId.',c:'curl -X POST \\\n  \'https://{yourOktaDomain}/oauth2/aus5rb5mt2H3d1TJd0h7/v1/token\' \\\n  -d \'grant_type=urn:ietf:params:oauth:grant-type:token-exchange\' \\\n  -d \'subject_token={userId_id_token}\' \\\n  -d \'subject_token_type=urn:ietf:params:oauth:token-type:id_token\' \\\n  -d \'resource=https://api.company.internal/resource\' \\\n  -d \'scope=read:data\''},
+      {s:'3. Correlate: user → agent activity in System Log',d:'Filter logs by agent ID; the sub claim in debugContext ties actions back to the originating user.',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=actor.id%20eq%20%22wlps2fwpkzi3raviM1d7%22\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+      {s:'4. From log actor.id, retrieve the agent',d:'The wlp... ID in actor.id maps directly to the agent in the Workload Principals API.',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7\' \\\n  -H \'Authorization: Bearer {accessToken}\''},
+    ],
+  },
+  {
+    s:'conn1', t:'agent_sub',
+    label:'A2A /\nsub-agent',
+    rel:'Resource Connection → Sub-Agent (A2A)',
+    corr:'connection.connectionType = IDENTITY_ASSERTION_A2A_SERVER\nconnection.resource.orn → Sub-Agent.orn\nResulting JWT: sub=user, act.sub=subAgent, act.act.sub=orchestrator',
+    desc:'The sub-agent is a protected resource — not a peer. The orchestrator holds a Resource Connection of connectionType=IDENTITY_ASSERTION_A2A_SERVER targeting it. The orchestrator token-exchanges at the sub-agent\'s auth server, and the resulting JWT carries a nested act chain: sub (original user) → act.act.sub (orchestrator) → act.sub (sub-agent). This full lineage is auditable in System Log debugContext.',
+    useWhen:'An agent is taking actions you did not expect and you need to determine whether it was acting independently or was instructed by a parent orchestrator. The act.act.sub claim in the JWT names the parent.',
+    claims:{'sub':'00uABCDEF1234567890  ← original user (preserved)','sub_profile':'"service"','act.sub':'wlpzantde10QGRrpF1d7  ← Sub-Agent.id (innermost actor)','act.sub_profile':'"ai_agent"','act.act.sub':'wlps2fwpkzi3raviM1d7  ← Orchestrator.id','act.act.sub_profile':'"ai_agent"','client_id':'wlpzantde10QGRrpF1d7'},
+    chain:[
+      {s:'1. List connections, filter for A2A type',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\'\n# Filter: connectionType == "IDENTITY_ASSERTION_A2A_SERVER"'},
+      {s:'2. Orchestrator token-exchanges at sub-agent\'s auth server',d:'Subject token is orchestrator\'s current access token.',c:'curl -X POST \\\n  \'https://{yourOktaDomain}/oauth2/ausSubAgent123/v1/token\' \\\n  -d \'grant_type=urn:ietf:params:oauth:grant-type:token-exchange\' \\\n  -d \'subject_token={orchestratorAccessToken}\' \\\n  -d \'subject_token_type=urn:ietf:params:oauth:token-type:access_token\' \\\n  -d \'actor_token={subAgentJwt}\' \\\n  -d \'actor_token_type=urn:ietf:params:oauth:token-type:jwt\' \\\n  -d \'resource=https://agent.company.internal/sub-agent\''},
+      {s:'3. Trace delegation chain in System Log',d:'Inspect debugContext for nested act claims.',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=actor.id%20eq%20%22wlpzantde10QGRrpF1d7%22\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+      {s:'4. From sub-agent ID, retrieve orchestrator (parent)',d:'act.act.sub in the JWT is the orchestrator\'s wlp... ID.',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7\' \\\n  -H \'Authorization: Bearer {accessToken}\''},
+    ],
+  },
+  {
+    s:'agent_orch', t:'conn1',
+    label:'has resource\nconnection',
+    rel:'AI Agent → Resource Connection',
+    corr:'agentId (path param) → Connection.id',
+    desc:'After registration, an agent establishes resource connections. Each connection defines: which auth server issues tokens, which scopes are granted, and what connection type (A2A, MCP, USER_CONTEXT) governs the access pattern.',
+    useWhen:'You need to see what resources an agent is authorized to access, or want to understand the connection type (A2A, MCP, USER_CONTEXT) governing how it gets tokens.',
+    chain:[
+      {s:'1. List agent\'s resource connections',d:'Returns connections and their authorizationServer.issuerUrl.',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\''},
+      {s:'2. Retrieve a specific connection',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections/rc0xyz1234example\' \\\n  -H \'Authorization: Bearer {accessToken}\''},
+      {s:'3. Discover potential new connections',d:'Lists auth servers and resources already known to Okta that this agent could connect to.',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections/potential\' \\\n  -H \'Authorization: Bearer {accessToken}\''},
+    ],
+  },
+  {
+    s:'conn1', t:'vmcp1',
+    label:'Agent Gateway\nrouting',
+    rel:'Resource Connection (STS_ACCESS_TOKEN) → Agent Gateway',
+    corr:'conn1.connectionType = STS_ACCESS_TOKEN\nconn1.resource.orn → AgentGateway.orn\nToken audience = AgentGateway.resourceUrl\nDelegation Link required on gateway',
+    desc:'When connectionType=STS_ACCESS_TOKEN, the Resource Connection points at the Agent Gateway. The agent presents a brokered STS access token to the gateway endpoint. The gateway then proxies tool calls to the appropriate downstream MCP server, enforcing identity context throughout. One connection covers all MCP servers behind the gateway.',
+    useWhen:'Tracing how an agent reaches the Agent Gateway and which downstream MCP servers it can call through centralized governance.',
+    chain:[
+      {s:'1. List agent connections, filter for STS_ACCESS_TOKEN',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\'\n# Filter: connectionType == "STS_ACCESS_TOKEN"'},
+      {s:'2. Parse gateway ID from resource.orn',d:'Last segment after virtual-mcp-servers: is the gateway ID (wlp…)',c:'# orn:okta:directory:{orgId}:workload-principals:virtual-mcp-servers:wlp1aB2cD3eF4gH5iJ6k'},
+      {s:'3. Retrieve the Agent Gateway',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/virtual-mcp-servers/wlp1aB2cD3eF4gH5iJ6k\' \\\n  -H \'Authorization: Bearer {accessToken}\''},
+      {s:'4. List downstream MCP servers behind the gateway',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/virtual-mcp-servers/wlp1aB2cD3eF4gH5iJ6k/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\''},
+    ],
+  },
+  {
+    s:'conn1', t:'mcp1',
+    label:'direct MCP\nserver',
+    rel:'Resource Connection (IDENTITY_ASSERTION_MCP_SERVER) → MCP Server',
+    corr:'conn1.connectionType = IDENTITY_ASSERTION_MCP_SERVER\nconn1.resource.orn → MCPServer.orn\nToken audience = MCPServer.resourceUrl',
+    desc:'When connectionType=IDENTITY_ASSERTION_MCP_SERVER, the Resource Connection points directly at one MCP server. The agent token-exchanges at the auth server referenced in the connection and presents the scoped token directly to the MCP server — no gateway proxy involved. Each additional MCP server the agent needs requires its own separate connection entry.',
+    useWhen:'An agent needs direct access to a specific MCP server without routing through the Agent Gateway. Use for small deployments or servers not exposed via the shared gateway.',
+    chain:[
+      {s:'1. List agent connections, filter for direct MCP',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\'\n# Filter: connectionType == "IDENTITY_ASSERTION_MCP_SERVER"'},
+      {s:'2. From resource.orn, identify the target MCP server',d:'Last segment = mcpServerId (ems…)',c:'# orn:okta:directory:{orgId}:resource-servers:mcp:ems8nUa7p0g4zrZbs2f4'},
+      {s:'3. Retrieve the MCP server record',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/resource-servers/mcp-servers/ems8nUa7p0g4zrZbs2f4\' \\\n  -H \'Authorization: Bearer {accessToken}\''},
+    ],
+  },
+  {
+    s:'conn1', t:'conn_as',
+    label:'auth server conn.',
+    rel:'Resource Connection → Authorization Server Resource Connection (IDENTITY_ASSERTION_CUSTOM_AS)',
+    corr:'conn1.connectionType = IDENTITY_ASSERTION_CUSTOM_AS\nconn1.resource.orn → target custom AuthorizationServer.orn',
+    desc:'The agent holds a Resource Connection of connectionType=IDENTITY_ASSERTION_CUSTOM_AS pointing at a custom authorization server in the tenant. This allows the agent to access APIs and services protected by that auth server. It is one of 5 resource types in the Okta UI — shown as "Authorization server" in the Add resource connection dialog.',
+    useWhen:'An agent needs to call an internal API protected by a custom Okta authorization server, and you need to find or verify that connection.',
+    chain:[
+      {s:'1. List agent connections, filter for auth server type',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\'\n# Filter: connectionType == "IDENTITY_ASSERTION_CUSTOM_AS"'},
+      {s:'2. Parse authServerId from resource.orn',d:'ORN last segment = ausXXX ID',c:'# orn:okta:idp:{orgId}:authorization_servers:ausXXXXXXXXXXXXXXX'},
+      {s:'3. Retrieve the target authorization server',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/authorizationServers/ausXXXXXXXXXXXXXXX\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+    ],
+  },
+  {
+    s:'vmcp1', t:'mcp1',
+    label:'aggregates\nMCP servers',
+    rel:'Agent Gateway → MCP Server',
+    corr:'AgentGateway.id → MCPServer via\ngateway downstream connections (resource.orn)',
+    desc:'The Agent Gateway\'s downstream connections map it to real MCP server registrations. Each downstream connection\'s resource ORN identifies an actual MCP server. Only STS_ACCESS_TOKEN connection type is supported for these downstream links.',
+    useWhen:'You need to enumerate every real tool server an Agent Gateway exposes to agents, or verify that a specific MCP server is or is not reachable through a given gateway.',
+    chain:[
+      {s:'1. List virtual MCP\'s downstream connections',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/virtual-mcp-servers/wlp1aB2cD3eF4gH5iJ6k/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\''},
+      {s:'2. Retrieve the underlying MCP server',d:'Extract ems... ID from the downstream connection\'s ORN.',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/resource-servers/mcp-servers/ems8nUa7p0g4zrZbs2f4\' \\\n  -H \'Authorization: Bearer {accessToken}\''},
+    ],
+  },
+  {
+    s:'app1', t:'agent_orch',
+    label:'provides OAuth\ncredentials',
+    rel:'OAuth App → AI Agent (credential backing)',
+    corr:'App.clientId = Agent.id (wlp…)',
+    desc:'An AI agent\'s OAuth identity is backed by an Okta application. The application\'s OIDC clientId IS the agent\'s wlp... ID — they are the same string. The app configures the auth method: client secret, private key JWT, or CIMD (Client ID Metadata Document).',
+    useWhen:'You have an agent ID (wlp...) and need to find the OAuth application backing it, or check which credential method (client secret vs. private key JWT) the agent uses.',
+    chain:[
+      {s:'1. From Agent ID, find the backing OAuth app',d:'The agent\'s wlp... ID equals the app\'s clientId.',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/apps?q=wlps2fwpkzi3raviM1d7\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+      {s:'2. Retrieve full app details',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/apps/0oab1234EXAMPLEID5d6\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+    ],
+  },
+  {
+    s:'log1', t:'user1',
+    label:'actor.id / target.id\n(00u…)',
+    rel:'System Log Event → User',
+    corr:'LogEvent.actor.id → User.id (00u…)\nLogEvent.target[].id → User.id',
+    desc:'When a human user performs an action, actor.id = User.id (00u prefix). When an admin performs an action ON a user, target[].id = User.id. These fields are the primary join keys between log events and User objects.',
+    useWhen:'A user reports activity they do not recognize, or you are running an access review and need to group all events from a specific person — including everything that happened within the same session.',
+    chain:[
+      {s:'1. Query logs by user as actor',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=actor.id%20eq%20%2200uABCDEF1234567890%22\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+      {s:'2. From actor.id in log, retrieve the User',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/users/00uABCDEF1234567890\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+      {s:'3. Correlate session: group events by externalSessionId',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=authenticationContext.externalSessionId%20eq%20%22102bZDWR16MQ2%22\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+    ],
+  },
+  {
+    s:'log1', t:'agent_orch',
+    label:'actor.id / target.id\n(wlp…)',
+    rel:'System Log Event → AI Agent',
+    corr:'LogEvent.actor.id → AIAgent.id (wlp…)\nLogEvent.actor.type = WorkloadPrincipal',
+    desc:'When an agent performs an action, it appears in System Log with actor.id = agent\'s wlp... ID and actor.type = WorkloadPrincipal. Agent activation/deactivation by admins shows the agent in target[].id. The wlp prefix in actor/target IDs is the key signal to differentiate agent events from user events.',
+    useWhen:'You spot a wlp... actor ID in System Log and want the full picture — who the agent is, what resources it is authorized to access, and what all of its recent activity looks like.',
+    chain:[
+      {s:'1. Find all events where agent was actor',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=actor.id%20eq%20%22wlps2fwpkzi3raviM1d7%22\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+      {s:'2. Find admin actions ON the agent (target)',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=target.id%20eq%20%22wlps2fwpkzi3raviM1d7%22\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+      {s:'3. From actor.id (wlp…), retrieve the full agent record',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7\' \\\n  -H \'Authorization: Bearer {accessToken}\''},
+      {s:'4. From agent, get its resource connections',d:'Understand what resources the agent was authorized to access.',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\''},
+    ],
+  },
+  {
+    s:'log1', t:'conn1',
+    label:'resource conn.\nevents',
+    rel:'System Log → Resource Connection (connection events)',
+    corr:'LogEvent.eventType sw "app.ai_agent_connection"\nLogEvent.target[].type = ResourceConnection\nLogEvent.target[].id = connectionId (rc0…)',
+    desc:'Resource connection create, update, activate, and deactivate events are tracked under app.ai_agent_connection.* in System Log. For ISVs and partners, these events are the signal that an agent has gained or lost access to a resource — a critical trigger for entitlement review workflows and access change notifications.',
+    useWhen:'Monitoring when agents establish or lose resource connections, triggering entitlement review on new connections, or auditing the history of access grants for a specific agent.',
+    chain:[
+      {s:'1. Filter all resource connection events',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=eventType%20sw%20%22app.ai_agent_connection%22\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+      {s:'2. Filter by specific connection as target',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=target.id%20eq%20%22rc0xyz1234example%22\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+      {s:'3. Filter connection events for a specific agent',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=actor.id%20eq%20%22wlps2fwpkzi3raviM1d7%22%20and%20eventType%20sw%20%22app.ai_agent_connection%22\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+    ],
+  },
+  {
+    s:'log1', t:'mcp1',
+    label:'app.mcp.*\nevents',
+    rel:'System Log → MCP Server (tool call events)',
+    corr:'LogEvent.eventType sw "app.mcp"\nLogEvent.target[].type = MCPServer\nLogEvent.target[].id = mcpServerId (ems…)',
+    desc:'MCP tool invocations, server registrations, and gateway connection events are recorded under app.mcp.* in System Log. This is the complete audit trail for which tools an agent used, when, and on behalf of which user. The sub claim in the associated token (visible in debugContext) links every tool call back to the delegating user — critical for user-level tool usage auditing.',
+    useWhen:'Auditing which MCP tools an agent used during a session, tracing a specific tool call back to the user who authorized it, or building tool usage analytics for governance dashboards.',
+    chain:[
+      {s:'1. Filter all MCP events',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=eventType%20sw%20%22app.mcp%22\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+      {s:'2. Filter by specific MCP server as target',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/logs?filter=target.id%20eq%20%22ems8nUa7p0g4zrZbs2f4%22\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+      {s:'3. Correlate tool call to the originating user',d:'The JWT sub claim in the token exchange event preceding the tool call identifies the user.',c:'# Inspect debugContext.debugData of app.mcp.* events for the delegating sub claim'},
+    ],
+  },
+  {
+    s:'conn1', t:'app2',
+    label:'XAA app\ninstance',
+    rel:'Resource Connection → Resource App (IDENTITY_ASSERTION_APP_INSTANCE)',
+    corr:'ResourceConnection.connectionType = IDENTITY_ASSERTION_APP_INSTANCE\nResourceConnection.resource.orn → App2.orn\nResourceConnection.clientIdAtResource = App2.id (0oa…)',
+    desc:'When a Resource Connection has connectionType=IDENTITY_ASSERTION_APP_INSTANCE, its resource.orn resolves to a specific OIN, OIDC, or SAML app. This is the XAA (Cross App Access) pattern: the agent presents its own wlp... token; Okta exchanges it for a scoped token (xaa:read) for this app on behalf of the delegating user. Shown in the Okta Admin UI as "App instance (SAML)" or "App instance (OIDC)" in the Resource connections tab.',
+    useWhen:'You have a resource connection with connectionType=IDENTITY_ASSERTION_APP_INSTANCE and need to identify the actual OIN/SAML/OIDC app it points to, or you are auditing whether XAA is enabled on the target app and what scopes are allowed.',
+    chain:[
+      {s:'1. List agent connections, find IDENTITY_ASSERTION_APP_INSTANCE',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections\' \\\n  -H \'Authorization: Bearer {accessToken}\'\n# Filter: connectionType == "IDENTITY_ASSERTION_APP_INSTANCE"'},
+      {s:'2. Parse appId from resource.orn',d:'ORN format: orn:okta:idp:{orgId}:apps:{appType}:{appId}',c:'# e.g. orn:okta:idp:00o1234:apps:salesforce:0oafxqCAJW...\n# appId = last segment: 0oafxqCAJW...'},
+      {s:'3. Retrieve the target resource app',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/api/v1/apps/0oafxqCAJWEXAMPLE\' \\\n  -H \'Authorization: SSWS {apiToken}\''},
+      {s:'4. Verify XAA is enabled on the app',d:'crossAppAccess must be enabled — this is the most common cause of connection failures.',c:'# Check app response for crossAppAccess.enabled == true'},
+      {s:'5. Confirm allowed scopes on the connection',d:'',c:'curl -X GET \\\n  \'https://{yourOktaDomain}/workload-principals/api/v1/ai-agents/wlps2fwpkzi3raviM1d7/connections/rc0xyz1234example\' \\\n  -H \'Authorization: Bearer {accessToken}\'\n# scopes[] should contain xaa:read'},
+    ],
+  },
+];
+
+
+
+// ════════════════════════════════════════════════════════════════
+// D3 GRAPH
+// ════════════════════════════════════════════════════════════════
+const svg = d3.select('#graph');
+const g = svg.append('g');
+const zoom = d3.zoom().scaleExtent([0.15,5]).on('zoom', e => g.attr('transform', e.transform));
+svg.call(zoom);
+
+// Arrow markers per node type
+const defs = svg.append('defs');
+Object.entries(NT).forEach(([type, info]) => {
+  defs.append('marker')
+    .attr('id', `ar-${type}`)
+    .attr('viewBox','0 -5 10 10').attr('refX',10).attr('refY',0)
+    .attr('markerWidth',5).attr('markerHeight',5).attr('orient','auto')
+    .append('path').attr('d','M0,-5L10,0L0,5').attr('fill', info.color+'90');
+});
+
+const nodeMap = {};
+NODES.forEach(n => nodeMap[n.id] = n);
+
+// ── Intentional 3-tier hierarchy — grid-computed, never randomizes ──
+// Tier 1 (y=0):   agent_orch
+// Tier 2 (y=210): conn1
+// Tier 3 (y=400): vmcp1 | conn_as | app2 | agent_sub  (evenly spread)
+// Tier 4 (y=560): mcp1 (under vmcp1)
+// Anchors: user1 upper-right, app1 right of conn1, log1 top banner
+const POS = {
+  log1:       {x:   0, y: -340},
+  user1:      {x: 420, y: -160},
+  agent_orch: {x:   0, y:    0},
+  app1:       {x: 380, y:  120},
+  conn1:      {x:   0, y:  210},
+  vmcp1:      {x:-270, y:  400},
+  conn_as:    {x: -30, y:  460},
+  app2:       {x:  90, y:  400},
+  agent_sub:  {x: 270, y:  400},
+  mcp1:       {x:-270, y:  560},
+};
+
+const simNodes = NODES.map(n => {
+  const p = POS[n.id] || {x: 0, y: 0};
+  return {...n, x: p.x, y: p.y, fx: p.x, fy: p.y};
+});
+const simEdges = EDGES.filter(e => e.s !== 'log1').map(e => ({...e, source: e.s, target: e.t}));
+
+// Minimal simulation — only needed to drive drag interactions
+const sim = d3.forceSimulation(simNodes)
+  .force('link', d3.forceLink(simEdges).id(d=>d.id))
+  .stop();
+
+// Banner dimensions for the log1 observability plane node
+const LOG_BW = 800, LOG_BH = 36;
+
+// Find where a ray from banner center (src) toward tgt exits the banner rect boundary
+function bannerExit(src, tgt){
+  const dx = tgt.x - src.x, dy = tgt.y - src.y;
+  const hw = LOG_BW/2, hh = LOG_BH/2;
+  let t = Infinity;
+  if(dy > 0) t = Math.min(t, hh / dy);       // bottom edge
+  if(dy < 0) t = Math.min(t, -hh / dy);      // top edge
+  if(dx > 0) t = Math.min(t, hw / dx);        // right edge
+  if(dx < 0) t = Math.min(t, -hw / dx);       // left edge
+  if(!isFinite(t)) t = 0;
+  return {x: src.x + dx*t, y: src.y + dy*t};
+}
+
+// Compute arc path starting/ending at circle edges (radius 38), not centers.
+// For log1 banner edges: straight dashed lines from banner boundary to node edge.
+function arcPath(d){
+  if(!d.source||!d.target) return '';
+  const srcId = d.source.id || d.s;
+  if(srcId === 'log1'){
+    const exit = bannerExit(d.source, d.target);
+    const dx = d.target.x - exit.x, dy = d.target.y - exit.y;
+    const len = Math.sqrt(dx*dx+dy*dy);
+    if(len < 1) return '';
+    const r=46, ux=dx/len, uy=dy/len;
+    return `M${exit.x},${exit.y}L${d.target.x-ux*r},${d.target.y-uy*r}`;
+  }
+  const dx=d.target.x-d.source.x, dy=d.target.y-d.source.y;
+  const len=Math.sqrt(dx*dx+dy*dy);
+  if(len<1) return '';
+  const r=46, ux=dx/len, uy=dy/len;
+  const sx=d.source.x+ux*r, sy=d.source.y+uy*r;
+  const ex=d.target.x-ux*r, ey=d.target.y-uy*r;
+  const dr=len*2.8;
+  return `M${sx},${sy}A${dr},${dr} 0 0,1 ${ex},${ey}`;
+}
+
+// Short display labels for edges (single line, ≤15 chars)
+const EDGE_GL = {
+  'user1→agent_orch':    'delegates',
+  'conn1→agent_sub':     'A2A / sub-agent',
+  'conn2→agent_sub':     'calls sub-agent',
+  'agent_orch→conn1':    'resource conn.',
+  'conn1→vmcp1':         'Agent Gateway',
+  'conn1→mcp1':          'direct MCP',
+  'conn1→conn_as':       'auth server',
+  'vmcp1→mcp1':          'MCP servers',
+  'app1→agent_orch':     'OAuth backing',
+  'log1→user1':          'user events',
+  'log1→agent_orch':     'agent events',
+  'log1→conn1':          'conn. events',
+  'log1→mcp1':           'tool events',
+  'conn1→app2':          'XAA target',
+};
+
+// Position label along arc: chord midpoint + perpendicular offset (follows arc bulge)
+function elabelPos(d){
+  if(!d.source||!d.target) return 'translate(0,0)';
+  const dx=d.target.x-d.source.x, dy=d.target.y-d.source.y;
+  const len=Math.sqrt(dx*dx+dy*dy)||1;
+  // For log1 banner edges use the actual exit point so the label
+  // stays on the connector line, not inside the banner rect.
+  const start = (d.s==='log1') ? bannerExit(d.source, d.target) : d.source;
+  const r=46, ux=dx/len, uy=dy/len;
+  const end = {x:d.target.x-ux*r, y:d.target.y-uy*r};
+  const mx=(start.x+end.x)/2, my=(start.y+end.y)/2;
+  const off=14;
+  return `translate(${mx+dy/len*off},${my-dx/len*off})`;
+}
+
+// ─── Edges (positions already known) ───────────────────────────
+const linkG = g.append('g');
+// ─── Hover tooltip for edges ────────────────────────────────────
+const etip = d3.select('body').append('div').attr('class','etip');
+
+const links = linkG.selectAll('path').data(simEdges).enter()
+  .append('path').attr('class','link')
+  .attr('stroke', d => { const src=nodeMap[d.s]; return src ? NT[src.type].color+(d.s==='log1'?'88':'bb') : '#777'; })
+  .attr('stroke-dasharray', d => d.s === 'log1' ? '5,4' : null)
+  .attr('marker-end', d => { const src=nodeMap[d.s]; return src ? `url(#ar-${src.type})` : ''; })
+  .attr('d', arcPath)
+  .on('mouseenter', (ev,d) => {
+    etip.style('display','block').text(d.label.replace('\n',' · '));
+  })
+  .on('mousemove', ev => {
+    etip.style('left',(ev.clientX+14)+'px').style('top',(ev.clientY-12)+'px');
+  })
+  .on('mouseleave', () => etip.style('display','none'))
+  .on('click', (ev,d)=>{ ev.stopPropagation(); etip.style('display','none'); showEdge(d); links.classed('sel',l=>l===d); nodeGs.classed('sel',false); });
+
+// ─── Edge labels (short, paint-order halo, perp-offset) ─────────
+const elG = g.append('g');
+const elabels = elG.selectAll('text').data(simEdges).enter().append('text')
+  .attr('class','elabel')
+  .attr('transform', elabelPos)
+  .text(d => d.s === 'log1' ? '' : (EDGE_GL[`${d.s}→${d.t}`] || d.label.split('\n')[0]));
+
+// ─── Nodes ──────────────────────────────────────────────────────
+const nodeG2 = g.append('g');
+const nodeGs = nodeG2.selectAll('g').data(simNodes).enter()
+  .append('g').attr('class','nc')
+  .attr('transform', d=>`translate(${d.x},${d.y})`)
+  .call(d3.drag()
+    .on('start',(ev,d)=>{ if(!ev.active) sim.alphaTarget(0.1).restart(); d.fx=d.x;d.fy=d.y; })
+    .on('drag',(ev,d)=>{ d.fx=ev.x;d.fy=ev.y; })
+    .on('end',(ev,d)=>{ if(!ev.active) sim.alphaTarget(0); /* stays pinned where dropped */ }))
+  .on('click',(ev,d)=>{ ev.stopPropagation(); showNode(nodeMap[d.id]); nodeGs.classed('sel',n=>n.id===d.id); links.classed('sel',false); });
+
+nodeGs.each(function(d){ d3.select(this).attr('style',`--c:${NT[d.type].color}`); });
+
+nodeGs.each(function(d){
+  const sel = d3.select(this);
+  if(d.id === 'log1'){
+    sel.append('rect')
+      .attr('x', -LOG_BW/2).attr('y', -LOG_BH/2)
+      .attr('width', LOG_BW).attr('height', LOG_BH)
+      .attr('rx', 8).attr('ry', 8)
+      .attr('fill', NT[d.type].color+'15')
+      .attr('stroke', NT[d.type].color)
+      .attr('stroke-width', 1.5)
+      .attr('stroke-dasharray', '6,3');
+  } else {
+    sel.append('circle')
+      .attr('r',46).attr('fill',NT[d.type].color+'22')
+      .attr('stroke',NT[d.type].color).attr('stroke-width',2);
+  }
+});
+
+// ── Instance label (d.label) inside the circle — wrap at spaces ──
+function wrapInstanceLabel(text){
+  const words = text.split(' ');
+  if(words.length <= 1) return [text];
+  if(words.length === 2) return words;
+  const mid = Math.ceil(words.length / 2);
+  return [words.slice(0,mid).join(' '), words.slice(mid).join(' ')];
+}
+
+nodeGs.each(function(d){
+  const el = d3.select(this);
+  if(d.id === 'log1'){
+    // Banner label: two lines centered in the 36px banner
+    el.append('text').attr('class','nlabel')
+      .attr('y', -7)
+      .attr('font-size','13px').attr('font-weight','700')
+      .attr('fill', NT[d.type].color)
+      .text('System Log');
+    el.append('text').attr('class','nlabel')
+      .attr('y', 7)
+      .attr('font-size','10px').attr('font-weight','500')
+      .attr('fill', NT[d.type].color+'99')
+      .attr('letter-spacing','0.1em')
+      .text('OBSERVABILITY PLANE');
+  } else {
+    const lines = wrapInstanceLabel(d.label);
+    const maxLen = Math.max(...lines.map(l => l.length));
+    const fs = maxLen <= 8 ? 14 : maxLen <= 12 ? 13 : 11.5;
+    const lh = 17;
+    const startY = -((lines.length - 1) * lh) / 2;
+    lines.forEach((line, i) => {
+      el.append('text').attr('class','nlabel')
+        .attr('y', startY + i * lh)
+        .attr('dy','0.35em')
+        .attr('font-size', fs + 'px')
+        .attr('font-weight','700')
+        .attr('fill', NT[d.type].color)
+        .text(line);
+    });
+  }
+});
+
+
+svg.on('click',()=>{ links.classed('sel',false); nodeGs.classed('sel',false); showPlaceholder(); });
+
+// Tick handler — only needed during drag interactions
+sim.on('tick',()=>{
+  links.attr('d', arcPath);
+  elabels.attr('transform', elabelPos);
+  nodeGs.attr('transform',d=>`translate(${d.x},${d.y})`);
+});
+
+
+// ─── Zoom controls ──────────────────────────────────────────────
+document.getElementById('zin').onclick=()=>svg.transition().call(zoom.scaleBy,1.4);
+document.getElementById('zout').onclick=()=>svg.transition().call(zoom.scaleBy,.7);
+document.getElementById('zfit').onclick=()=>{
+  const b=g.node().getBBox(), W=document.getElementById('gc').clientWidth, H=document.getElementById('gc').clientHeight;
+  if(!b.width||!b.height||!W||!H) return;
+  const sc=Math.min(W/(b.width+100), H/(b.height+100), 1.1);
+  const tx=W/2-sc*(b.x+b.width/2), ty=H/2-sc*(b.y+b.height/2);
+  svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity.translate(tx,ty).scale(sc));
+};
+
+// Positions are pre-computed — fit on the next animation frame once the DOM has painted
+requestAnimationFrame(()=>requestAnimationFrame(()=>document.getElementById('zfit').click()));
+
+// ════════════════════════════════════════════════════════════════
+// DETAIL PANEL
+// ════════════════════════════════════════════════════════════════
+let curTab='schema';
+
+function showPlaceholder(){
+  document.getElementById('ph').style.display='flex';
+  document.getElementById('pca').style.display='none';
+}
+function openPanel(color, badgeText, title, tabs){
+  document.getElementById('ph').style.display='none';
+  const pca=document.getElementById('pca');
+  pca.style.display='flex';
+  document.getElementById('phead').innerHTML=
+    `<span class="ptitle">${esc(title)}</span>`;
+  document.getElementById('phead').style.borderLeft=`3px solid ${color}`;
+  document.getElementById('phead').style.paddingLeft='13px';
+  const ptabs=document.getElementById('ptabs');
+  ptabs.innerHTML=tabs.map(t=>`<div class="ptab ${t.id===curTab?'active':''}" data-id="${t.id}">${t.label}</div>`).join('');
+  ptabs.querySelectorAll('.ptab').forEach(el=>{
+    el.addEventListener('click',()=>{
+      curTab=el.dataset.id;
+      ptabs.querySelectorAll('.ptab').forEach(x=>x.classList.toggle('active',x.dataset.id===curTab));
+      renderTab(tabs.find(t=>t.id===curTab));
+    });
+  });
+  renderTab(tabs.find(t=>t.id===curTab)||tabs[0]);
+}
+function renderTab(tab){ if(tab) document.getElementById('pbody').innerHTML=tab.render(); }
+
+function mcol(m){ return {GET:'#10b981',POST:'#3b82f6',PUT:'#f59e0b',DELETE:'#ef4444',PATCH:'#8b5cf6'}[m]||'#6366f1'; }
+
+// Map [pathSubstring, url] — ordered most-specific first so find() picks the right one.
+// docsUrl also handles method-specific overrides for same-path operations (GET vs PATCH).
+const BASE_AI = 'https://developer.okta.com/docs/api/secures-ai/openapi/secures-ai-workload-principals/secures-ai-workload-principals';
+const BASE_MGMT = 'https://developer.okta.com/docs/api/openapi/okta-management/management';
+const DOCS_MAP = [
+  // AI Agent connections
+  ['/ai-agents/{agentId}/connections/potential',      `${BASE_AI}/agentconnections`],
+  ['/ai-agents/{agentId}/connections/{connectionId}', `${BASE_AI}/agentconnections/getresourceconnection`],
+  ['/ai-agents/{agentId}/connections',                `${BASE_AI}/agentconnections/listconnections`],
+  // AI Agent lifecycle
+  ['/ai-agents/{agentId}/lifecycle/activate',         `${BASE_AI}/agentregistration/activateaiagent`],
+  // AI Agent CRUD (method-specific handled in docsUrl)
+  ['/ai-agents/{agentId}',                            `${BASE_AI}/agentregistration/getaiagent`],
+  ['/ai-agents?filter',                               `${BASE_AI}/agentregistration/listaiagents`],
+  ['/ai-agents',                                      `${BASE_AI}/agentregistration/listaiagents`],
+  // Agent providers
+  ['/agent-providers',                                `${BASE_AI}/agentproviders/listaiagentproviders`],
+  // Virtual MCP servers
+  ['/virtual-mcp-servers',                            `${BASE_AI}/virtualmcpregistration`],
+  // MCP servers
+  ['/resource-servers/mcp-servers',                   'https://developer.okta.com/docs/api/secures-ai/mcp-servers'],
+  // Delegation links
+  ['/delegation-links',                               `${BASE_AI}/delegationlinks/listdelegationlinks`],
+  // Apps — specific sub-resources first
+  ['/api/v1/apps/{appId}/users',                      `${BASE_MGMT}/tags/applicationusers`],
+  ['/api/v1/apps/{appId}/grants',                     `${BASE_MGMT}/tags/applicationgrants`],
+  ['/api/v1/apps',                                    `${BASE_MGMT}/tags/application/other/listapplications`],
+  // Auth servers — specific sub-resources first
+  ['/api/v1/authorizationServers/{authServerId}/policies/{policyId}/rules', `${BASE_MGMT}/tags/authorizationserverrules`],
+  ['/api/v1/authorizationServers/{authServerId}/policies',                  `${BASE_MGMT}/tags/authorizationserverpolicies/other/listauthorizationserverpolicies`],
+  ['/api/v1/authorizationServers',                    `${BASE_MGMT}/tags/authorizationserver`],
+  // Users
+  ['/api/v1/users/{userId}',                          `${BASE_MGMT}/tags/user`],
+  ['/api/v1/users',                                   `${BASE_MGMT}/tags/user/other/listusers`],
+  // System Log
+  ['/api/v1/logs',                                    `${BASE_MGMT}/tags/systemlog/other/listlogevents`],
+];
+// Resolve docs URL from a raw curl command (used for edge chain steps)
+function docsUrlFromCurl(curl){
+  const m = curl.match(/https?:\/\/[^\s'"]+/);
+  if(!m) return null;
+  const p = m[0].replace(/https?:\/\/[^\/]+/,'').split('?')[0];
+  if(p.includes('/ai-agents/') && p.includes('/connections') && p.includes('/potential')) return `${BASE_AI}/agentconnections`;
+  if(p.includes('/ai-agents/') && p.includes('/connections/'))  return `${BASE_AI}/agentconnections/getresourceconnection`;
+  if(p.includes('/ai-agents/') && p.includes('/connections'))   return `${BASE_AI}/agentconnections/listconnections`;
+  if(p.includes('/ai-agents/') && p.includes('/lifecycle/activate')) return `${BASE_AI}/agentregistration/activateaiagent`;
+  if(p.includes('/ai-agents/'))  return `${BASE_AI}/agentregistration/getaiagent`;
+  if(p.includes('/ai-agents'))   return `${BASE_AI}/agentregistration/listaiagents`;
+  if(p.includes('/agent-providers'))  return `${BASE_AI}/agentproviders/listaiagentproviders`;
+  if(p.includes('/virtual-mcp-servers/') && p.includes('/connections')) return `${BASE_AI}/virtualmcpregistration`;
+  if(p.includes('/virtual-mcp-servers'))  return `${BASE_AI}/virtualmcpregistration`;
+  if(p.includes('/resource-servers/mcp-servers')) return 'https://developer.okta.com/docs/api/secures-ai/mcp-servers';
+  if(p.includes('/delegation-links'))  return `${BASE_AI}/delegationlinks/listdelegationlinks`;
+  if(p.includes('/api/v1/apps/') && p.includes('/users'))  return `${BASE_MGMT}/tags/applicationusers`;
+  if(p.includes('/api/v1/apps/') && p.includes('/grants')) return `${BASE_MGMT}/tags/applicationgrants`;
+  if(p.includes('/api/v1/apps'))  return `${BASE_MGMT}/tags/application/other/listapplications`;
+  if(p.includes('/api/v1/authorizationServers/') && p.includes('/policies/') && p.includes('/rules')) return `${BASE_MGMT}/tags/authorizationserverrules`;
+  if(p.includes('/api/v1/authorizationServers/') && p.includes('/policies')) return `${BASE_MGMT}/tags/authorizationserverpolicies/other/listauthorizationserverpolicies`;
+  if(p.includes('/api/v1/authorizationServers')) return `${BASE_MGMT}/tags/authorizationserver`;
+  if(p.includes('/api/v1/users/'))  return `${BASE_MGMT}/tags/user`;
+  if(p.includes('/api/v1/users'))   return `${BASE_MGMT}/tags/user/other/listusers`;
+  if(p.includes('/api/v1/logs'))    return `${BASE_MGMT}/tags/systemlog/other/listlogevents`;
+  return null;
+}
+
+function docsUrl(path, method){
+  if(path.includes('/ai-agents/{agentId}') && !path.includes('/connections') && !path.includes('/lifecycle')){
+    if(method==='PATCH') return `${BASE_AI}/agentregistration/updateaiagent`;
+    if(method==='PUT')   return `${BASE_AI}/agentregistration/replaceaiagent`;
+  }
+  const m = DOCS_MAP.find(([p]) => path.includes(p));
+  return m ? m[1] : null;
+}
+
+function showNode(node){
+  if(!node) return;
+  const info=NT[node.type];
+  curTab='schema';
+  openPanel(info.color, info.label, node.label, [
+    {id:'schema', label:'Schema', render:()=>{
+      let h='';
+      if(node.summary) h+=`<div class="info">${esc(node.summary)}</div>`;
+      if(node.orn) h+=`<div class="orn"><strong>ORN:</strong> ${esc(node.orn)}</div>`;
+      for(const [grp,fields] of Object.entries(node.schema)){
+        h+=`<div class="fgrp"><div class="fgtitle">${esc(grp)}</div>`;
+        fields.forEach(f=>{
+          h+=`<div class="frow"><span class="fname">${esc(f.n)}</span><div>${f.v?`<div class="fval">${esc(f.v)}</div>`:''  }${f.d?`<div class="fdesc">${esc(f.d)}</div>`:''}</div></div>`;
+        });
+        h+=`</div>`;
+      }
+      return h;
+    }},
+    {id:'apis', label:`APIs (${node.apis.length})`, render:()=>{
+      return node.apis.map(a=>`
+        <div class="api-card">
+          <div class="api-head">
+            <span class="method" style="background:${mcol(a.method)}22;color:${mcol(a.method)}">${esc(a.method)}</span>
+            <span class="api-title">${esc(a.label)}</span>
+            ${docsUrl(a.path,a.method)?`<a class="api-docs" href="${docsUrl(a.path,a.method)}" target="_blank" rel="noopener">docs ↗</a>`:''}
+          </div>
+          ${a.desc?`<div class="api-desc">${esc(a.desc)}</div>`:''}
+          <div class="api-body">
+            <div class="code-block">${esc(a.path)}</div>
+            <div class="needs-row">
+              <span class="needs-label">You need:</span>
+              ${[...a.path.matchAll(/\{([^}]+)\}/g)].map(m=>`<span class="needs-chip param">${esc(m[1])}</span>`).join('')}
+              <span class="needs-chip token">${a.curl&&a.curl.includes('SSWS')?'SSWS API token':'Bearer access token'}</span>
+              ${a.scope?`<span class="needs-chip scope">${esc(a.scope)}</span>`:''}
+              ${a.role?`<span class="needs-chip role">${esc(a.role)} role</span>`:''}
+            </div>
+            ${a.ret?`<div class="frow"><span class="fname">Returns</span><span class="fdesc">${esc(a.ret)}</span></div>`:''}
+            <div class="code-block">${esc(a.curl)}<button class="copy-btn" onclick="cp(this)">copy</button></div>
+          </div>
+        </div>`).join('');
+    }},
+  ]);
+}
+
+function showEdge(edge){
+  curTab='correlation';
+  const srcNode=nodeMap[edge.s];
+  const color=srcNode?NT[srcNode.type].color:'#6366f1';
+  openPanel(color,'RELATIONSHIP', edge.rel, [
+    {id:'correlation', label:'Identifier Join', render:()=>{
+      let h=`<div class="info">${esc(edge.desc)}</div>`;
+      h+=`<div class="fgrp"><div class="fgtitle">How These Entities Connect</div>`;
+      h+=`<div style="font-size:11.5px;color:#9aa5c8;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;line-height:1.6;margin-bottom:8px">These are the exact field names you use to hop between the two APIs — take the value from one side and plug it into the other.</div>`;
+      edge.corr.split('\n').forEach(line=>{
+        h+=`<div class="frow"><span class="fval" style="color:#818cf8;font-family:monospace">${esc(line)}</span></div>`;
+      });
+      h+=`</div>`;
+      if(edge.claims){
+        h+=`<div class="fgrp"><div class="fgtitle">JWT Token Claims (example)</div>`;
+        Object.entries(edge.claims).forEach(([k,v])=>{
+          h+=`<div class="frow"><span class="fname">${esc(k)}</span><span class="fval">${esc(v)}</span></div>`;
+        });
+        h+=`</div>`;
+      }
+      return h;
+    }},
+    {id:'chain', label:`API Chain (${edge.chain.length} steps)`, render:()=>{
+      let h='';
+      if(edge.useWhen) h+=`<div class="use-when"><strong>Use this when:</strong> ${esc(edge.useWhen)}</div>`;
+      edge.chain.forEach((step,i)=>{
+        const stepDocs = docsUrlFromCurl(step.c);
+        h+=`<div class="step-card">
+          <div class="step-head">
+            <span class="step-num">${i+1}</span>
+            <span class="step-title">${esc(step.s)}</span>
+            ${stepDocs?`<a class="api-docs" href="${stepDocs}" target="_blank" rel="noopener">docs ↗</a>`:''}
+          </div>
+          <div class="step-body">
+            ${step.d?`<div class="fdesc" style="margin-bottom:5px">${esc(step.d)}</div>`:''}
+            <div class="code-block">${esc(step.c)}<button class="copy-btn" onclick="cp(this)">copy</button></div>
+          </div>
+        </div>`;
+        if(i<edge.chain.length-1) h+=`<div class="chain-arrow">↓</div>`;
+      });
+      return h;
+    }},
+  ]);
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+window.cp=btn=>{ const txt=btn.parentElement.textContent.replace('copy','').trim(); navigator.clipboard.writeText(txt).then(()=>{ btn.textContent='✓'; setTimeout(()=>btn.textContent='copy',1500); }); };
+
+// ════════════════════════════════════════════════════════════════
+// SAMPLE FLOWS — API chaining use cases
+// ════════════════════════════════════════════════════════════════
+const FLOWS = [
+  {
+    title:'Agent Access Inventory',
+    desc:'You have an agent and you want to know exactly what it can touch. Start with its ID, pull all its connections, then follow each one to the actual resource — whether that\'s an app, a tool server, another agent, or an internal API. Good for access reviews or just sanity-checking what you deployed.',
+    steps:[
+      {
+        title:'List all agents in the org',
+        method:'GET',
+        path:'/workload-principals/api/v1/ai-agents',
+        out:[
+          {n:'id',           v:'wlps2fwpkzi3raviM1d7', to:'Step 2 — agentId'},
+          {n:'profile.name', v:'CopilotOrchestrator',   to:null},
+          {n:'status',       v:'ACTIVE',                 to:null},
+        ],
+      },
+      {
+        title:'Get all resource connections for the agent',
+        method:'GET',
+        path:'/workload-principals/api/v1/ai-agents/{agentId}/connections',
+        in:[
+          {n:'agentId', v:'wlps2fwpkzi3raviM1d7', from:'Step 1 → id'},
+        ],
+        out:[
+          {n:'connectionType', v:'IDENTITY_ASSERTION_MCP_SERVER', to:'Step 3 — selects which API to call'},
+          {n:'resource.orn',   v:'orn:okta:...',                   to:'Step 3 — parse last segment for resource ID'},
+          {n:'status',         v:'ACTIVE',                          to:null},
+        ],
+      },
+      {
+        title:'Resolve each resource by connectionType',
+        method:'GET',
+        path:'MCP server:    /workload-principals/api/v1/resource-servers/mcp-servers/{id}\nGateway:       /workload-principals/api/v1/virtual-mcp-servers/{id}\nEnterprise app: /api/v1/apps/{id}\nSub-agent:     /workload-principals/api/v1/ai-agents/{id}\nAuth server:   /api/v1/authorizationServers/{id}',
+        in:[
+          {n:'resource ID', v:'ems.../wlp.../0oa.../aus...', from:'Step 2 → resource.orn (last path segment)'},
+        ],
+        out:[
+          {n:'resourceUrl / issuer / label', v:'https://...', to:null},
+          {n:'status',                        v:'ACTIVE',      to:null},
+        ],
+        note:'You\'ll do Step 3 once per connection. The connectionType is the branching signal — it tells you which API to hit. Five connection types, five different endpoints.',
+      },
+    ],
+  },
+  {
+    title:'User + Agent Activity Trail',
+    desc:'Someone wants to know what an agent did on their behalf — or you need to prove it. The trick is the JWT sub claim: when an agent acts for a user, the user\'s ID rides along in the token. Filter logs by the agent, then look for that user\'s ID in the sub claim to separate "agent acting for this person" from "agent doing its own thing".',
+    steps:[
+      {
+        title:'Look up the user',
+        method:'GET',
+        path:'/api/v1/users?q={login}',
+        in:[
+          {n:'q', v:'inna@company.com', from:'known user login or email'},
+        ],
+        out:[
+          {n:'id',    v:'00uABCDEF1234567890', to:'Step 4 — cross-reference against JWT sub'},
+          {n:'login', v:'inna@company.com',    to:null},
+        ],
+      },
+      {
+        title:'Look up the agent',
+        method:'GET',
+        path:'/workload-principals/api/v1/ai-agents',
+        out:[
+          {n:'id',           v:'wlps2fwpkzi3raviM1d7', to:'Step 3 — actor.id filter'},
+          {n:'profile.name', v:'CopilotOrchestrator',   to:null},
+        ],
+      },
+      {
+        title:'Pull all log events where agent was the actor',
+        method:'GET',
+        path:'/api/v1/logs?filter=actor.id eq "{agentId}"',
+        in:[
+          {n:'agentId', v:'wlps2fwpkzi3raviM1d7', from:'Step 2 → id'},
+        ],
+        out:[
+          {n:'debugContext JWT sub', v:'00uABCDEF...', to:'Step 4 — match against user ID'},
+          {n:'eventType',             v:'system.token.grant', to:null},
+          {n:'published',             v:'2026-10-29T08:42Z',  to:null},
+          {n:'transaction.id',        v:'WpkhjWgB...',        to:'optional — group related events'},
+        ],
+      },
+      {
+        title:'Confirm delegation: match JWT sub against user ID',
+        method:'GET',
+        path:'/api/v1/logs?filter=actor.id eq "{agentId}" and eventType sw "system.token"',
+        in:[
+          {n:'agentId', v:'wlps2fwpkzi3raviM1d7', from:'Step 2 → id'},
+        ],
+        out:[
+          {n:'debugContext JWT sub', v:'00uABCDEF...', to:'Match against Step 1 → id'},
+          {n:'debugContext act.sub', v:'wlps2f...',    to:'Confirms agent was acting on behalf of user'},
+        ],
+        note:'If the JWT sub in debugContext matches the user\'s 00u... ID — that action was on their behalf. No sub? The agent was acting on its own.',
+      },
+    ],
+  },
+  {
+    title:'Agent Tool Footprint (MCP)',
+    desc:'Want to know which tools an agent can actually call? An agent can reach MCP servers two ways — directly (one connection per server) or through a gateway (one connection, many servers behind it). This flow walks both paths and gets you all the way down to the individual tool names and what they do.',
+    steps:[
+      {
+        title:'Get agent connections — filter for MCP types',
+        method:'GET',
+        path:'/workload-principals/api/v1/ai-agents/{agentId}/connections',
+        in:[
+          {n:'agentId', v:'wlps2fwpkzi3raviM1d7', from:'known agent ID'},
+        ],
+        out:[
+          {n:'connectionType', v:'IDENTITY_ASSERTION_MCP_SERVER or STS_ACCESS_TOKEN', to:'Step 2 or Step 3'},
+          {n:'resource.orn',   v:'orn:okta:...',                                       to:'Step 2 or Step 3 — parse last segment'},
+        ],
+      },
+      {
+        title:'Direct MCP — retrieve the MCP server',
+        method:'GET',
+        path:'/workload-principals/api/v1/resource-servers/mcp-servers/{mcpServerId}',
+        in:[
+          {n:'mcpServerId', v:'ems8nUa7...', from:'Step 1 → resource.orn (last segment) where connectionType = IDENTITY_ASSERTION_MCP_SERVER'},
+        ],
+        out:[
+          {n:'displayName', v:'Internal Tools MCP',           to:null},
+          {n:'resourceUrl', v:'https://mcp.company.internal', to:null},
+          {n:'status',      v:'ACTIVE',                        to:null},
+        ],
+      },
+      {
+        title:'Gateway — list downstream MCP connections',
+        method:'GET',
+        path:'/workload-principals/api/v1/virtual-mcp-servers/{virtualMcpId}/connections',
+        in:[
+          {n:'virtualMcpId', v:'wlp1aB2c...', from:'Step 1 → resource.orn (last segment) where connectionType = STS_ACCESS_TOKEN'},
+        ],
+        out:[
+          {n:'id',           v:'rc0abc...',      to:'Step 4 — connectionId'},
+          {n:'resource.orn', v:'orn:okta:...ems...', to:'optional — resolve the downstream MCP server'},
+        ],
+      },
+      {
+        title:'Gateway — list tool capabilities per connection',
+        method:'GET',
+        path:'/workload-principals/api/v1/virtual-mcp-servers/{virtualMcpId}/connections/{connectionId}/capabilities',
+        in:[
+          {n:'virtualMcpId', v:'wlp1aB2c...',  from:'Step 3 — gateway ID'},
+          {n:'connectionId',  v:'rc0abc...',    from:'Step 3 → id'},
+        ],
+        out:[
+          {n:'name',        v:'search_calendar',                   to:null},
+          {n:'description', v:'Search calendar events for a user', to:null},
+          {n:'inputSchema', v:'{required:[],properties:{...}}',    to:null},
+        ],
+      },
+    ],
+  },
+  {
+    title:'Entitlement Change Detection (On-Demand)',
+    desc:'An agent started doing something it wasn\'t doing before — or you just want a history of who gave what access to whom. System Log tracks every time a resource connection is created, activated, or deactivated. This flow turns those raw log events into a readable record: which agent, which resource, who made the change, and when.',
+    steps:[
+      {
+        title:'Query all resource connection events',
+        method:'GET',
+        path:'/api/v1/logs?filter=eventType sw "app.ai_agent_connection"',
+        out:[
+          {n:'target[0].id', v:'rc0xyz1234...',      to:'Step 2 — connectionId'},
+          {n:'target[1].id', v:'wlps2f...',           to:'Step 2 — agentId'},
+          {n:'actor.id',     v:'00uABC... / wlp...', to:'Step 3 — resolve who made the change'},
+          {n:'eventType',    v:'app.ai_agent_connection.activate', to:null},
+          {n:'published',    v:'2026-10-29T08:42Z',  to:null},
+        ],
+      },
+      {
+        title:'Retrieve the affected connection',
+        method:'GET',
+        path:'/workload-principals/api/v1/ai-agents/{agentId}/connections/{connectionId}',
+        in:[
+          {n:'agentId',      v:'wlps2f...',     from:'Step 1 → target[1].id'},
+          {n:'connectionId', v:'rc0xyz1234...', from:'Step 1 → target[0].id'},
+        ],
+        out:[
+          {n:'connectionType', v:'IDENTITY_ASSERTION_MCP_SERVER', to:'Step 4 — determines which API to call'},
+          {n:'resource.orn',   v:'orn:okta:...',                   to:'Step 4 — parse resource ID'},
+          {n:'scopes',         v:'["api:read"]',                   to:null},
+          {n:'status',         v:'ACTIVE',                          to:null},
+        ],
+      },
+      {
+        title:'Resolve who made the change',
+        method:'GET',
+        path:'/api/v1/users/{userId}                        (if actor.id starts 00u)\n/workload-principals/api/v1/ai-agents/{agentId}  (if actor.id starts wlp)',
+        in:[
+          {n:'actor.id', v:'00uABC... or wlp...', from:'Step 1 → actor.id'},
+        ],
+        out:[
+          {n:'login / profile.name', v:'admin@company.com', to:null},
+          {n:'id',                    v:'00u... or wlp...',  to:null},
+        ],
+      },
+      {
+        title:'Resolve what resource was affected',
+        method:'GET',
+        path:'Based on connectionType from Step 2 — same resolution as Flow 1, Step 3',
+        in:[
+          {n:'resource ID', v:'ems.../0oa.../aus.../wlp...', from:'Step 2 → resource.orn (last segment)'},
+        ],
+        out:[
+          {n:'displayName / label / name', v:'Internal Tools MCP', to:null},
+          {n:'resourceUrl / issuer',        v:'https://...',         to:null},
+        ],
+        note:'Put all four steps together and you have one clean record: agent X gained access to resource Y, at this time, because admin Z made the change. That\'s the story your audit log needs to tell.',
+      },
+    ],
+  },
+  {
+    title:'Delegation Chain Forensics',
+    desc:'Something happened and you need to know who\'s actually responsible. When agents delegate to other agents, the JWT carries a chain: the original user, the orchestrator that picked up the work, and the sub-agent that ran it. This flow reads that chain backwards — from the action in the log all the way up to the person who started it.',
+    steps:[
+      {
+        title:'Find suspicious agent actions in System Log',
+        method:'GET',
+        path:'/api/v1/logs?filter=actor.type eq "WorkloadPrincipal"',
+        out:[
+          {n:'actor.id',              v:'wlpzante...',           to:'Step 2 — innermost agent ID'},
+          {n:'debugContext act.sub',  v:'wlpzante...',           to:'Step 2 — innermost agent'},
+          {n:'debugContext act.act.sub', v:'wlps2f...',          to:'Step 3 — parent orchestrator'},
+          {n:'debugContext JWT sub',  v:'00uABCDEF...',          to:'Step 4 — originating user'},
+          {n:'transaction.id',         v:'WpkhjWgB...',          to:'optional — group all events from same call'},
+        ],
+      },
+      {
+        title:'Retrieve the sub-agent (innermost actor)',
+        method:'GET',
+        path:'/workload-principals/api/v1/ai-agents/{agentId}',
+        in:[
+          {n:'agentId', v:'wlpzante...', from:'Step 1 → actor.id  or  debugContext act.sub'},
+        ],
+        out:[
+          {n:'id',           v:'wlpzante...', to:null},
+          {n:'profile.name', v:'NLPSubAgent', to:null},
+        ],
+      },
+      {
+        title:'Retrieve the orchestrator (parent in act chain)',
+        method:'GET',
+        path:'/workload-principals/api/v1/ai-agents/{agentId}',
+        in:[
+          {n:'agentId', v:'wlps2f...', from:'Step 1 → debugContext act.act.sub'},
+        ],
+        out:[
+          {n:'id',           v:'wlps2f...',           to:null},
+          {n:'profile.name', v:'CopilotOrchestrator', to:null},
+        ],
+      },
+      {
+        title:'Retrieve the originating user',
+        method:'GET',
+        path:'/api/v1/users/{userId}',
+        in:[
+          {n:'userId', v:'00uABCDEF...', from:'Step 1 → debugContext JWT sub claim'},
+        ],
+        out:[
+          {n:'id',    v:'00uABCDEF...', to:null},
+          {n:'login', v:'inna@company.com', to:null},
+        ],
+        note:'After these four calls you have the full picture: user → orchestrator → sub-agent. If act.act.sub isn\'t there, it\'s simpler — just a user delegating directly to one agent, no sub-agent involved.',
+      },
+    ],
+  },
+];
+
+function toggleFlows(){
+  document.getElementById('flows-drawer').classList.toggle('open');
+}
+function toggleFlowAcc(el){
+  el.closest('.flow-acc').classList.toggle('open');
+}
+function renderFlows(){
+  const body = document.getElementById('flows-body');
+  body.innerHTML = FLOWS.map((f,fi)=>`
+    <div class="flow-acc">
+      <div class="flow-acc-hd" onclick="toggleFlowAcc(this)">
+        <span class="flow-idx">${fi+1}</span>
+        <span class="flow-name">${esc(f.title)}</span>
+        <span class="flow-chev">▼</span>
+      </div>
+      <div class="flow-bd">
+        <p class="flow-desc">${esc(f.desc)}</p>
+        ${f.steps.map((s,si)=>`
+          ${si>0?'<div class="fstep-arr">↓</div>':''}
+          <div class="fstep">
+            <div class="fstep-hd">
+              <span class="fstep-n">${si+1}</span>
+              <span class="fstep-t">${esc(s.title)}</span>
+            </div>
+            <div class="fstep-call">
+              <span class="method" style="background:${mcol(s.method)}22;color:${mcol(s.method)};flex-shrink:0">${esc(s.method)}</span>
+              <span class="fstep-path">${esc(s.path)}</span>
+            </div>
+            <div class="fstep-io">
+              ${s.in&&s.in.length?`
+                <span class="io-lbl">Input</span>
+                ${s.in.map(r=>`<div class="io-row">
+                  <span class="io-n">${esc(r.n)}</span>
+                  <span class="io-v">${esc(r.v)}</span>
+                  ${r.from?`<span class="io-link">← ${esc(r.from)}</span>`:''}
+                </div>`).join('')}`:''}
+              ${s.out&&s.out.length?`
+                <span class="io-lbl">Key Response Fields</span>
+                ${s.out.map(r=>`<div class="io-row">
+                  <span class="io-n">${esc(r.n)}</span>
+                  <span class="io-v">${esc(r.v)}</span>
+                  ${r.to?`<span class="io-link">→ ${esc(r.to)}</span>`:''}
+                </div>`).join('')}`:''}
+            </div>
+            ${s.note?`<div class="fstep-note">${esc(s.note)}</div>`:''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+window.addEventListener('DOMContentLoaded', renderFlows);
+</script>
+
+<div id="flows-drawer">
+  <div class="fd-hdr">
+    <div>
+      <div class="fd-hdr-title">Sample Flows</div>
+      <div class="fd-hdr-sub">5 real-world API chaining patterns — click to expand</div>
+    </div>
+    <button class="fd-close" onclick="toggleFlows()">×</button>
+  </div>
+  <div class="fd-body" id="flows-body"></div>
+</div>
+</body>
+</html>
