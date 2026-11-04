@@ -938,6 +938,24 @@ const links = linkG.selectAll('path').data(simEdges).enter()
   .on('mouseleave', () => etip.style('display','none'))
   .on('click', (ev,d)=>{ ev.stopPropagation(); etip.style('display','none'); showEdge(d); links.classed('sel',l=>l===d); nodeGs.classed('sel',false); });
 
+// Invisible wide hit areas on top — makes edges much easier to click/tap
+linkG.selectAll('path.hit').data(simEdges).enter()
+  .append('path').attr('class','hit')
+  .attr('stroke','transparent').attr('stroke-width',20).attr('fill','none').attr('cursor','pointer')
+  .attr('d', arcPath)
+  .on('mouseenter', (ev,d) => {
+    etip.style('display','block').text(d.label.replace('\n',' · '));
+    links.filter(l=>l===d).classed('sel',true);
+  })
+  .on('mousemove', ev => {
+    etip.style('left',(ev.clientX+14)+'px').style('top',(ev.clientY-12)+'px');
+  })
+  .on('mouseleave', (ev,d) => {
+    etip.style('display','none');
+    links.filter(l=>l===d).classed('sel',false);
+  })
+  .on('click', (ev,d)=>{ ev.stopPropagation(); etip.style('display','none'); showEdge(d); links.classed('sel',l=>l===d); nodeGs.classed('sel',false); });
+
 // ─── Edge labels (short, paint-order halo, perp-offset) ─────────
 const elG = g.append('g');
 const elabels = elG.selectAll('text').data(simEdges).enter().append('text')
