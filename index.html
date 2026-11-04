@@ -19,7 +19,7 @@ header h1{font-size:14px;font-weight:700;white-space:nowrap}
 .source-link:hover{color:var(--accent)}
 .main{display:flex;flex:1;overflow:hidden}
 #gc{flex:1;position:relative;overflow:hidden}
-svg{width:100%;height:100%}
+svg{width:100%;height:100%;touch-action:none}
 #panel{width:520px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
 .ph{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--dim);text-align:center;padding:24px;gap:10px}
 .ph p{font-size:12px;line-height:1.6;max-width:260px}
@@ -82,6 +82,7 @@ svg{width:100%;height:100%}
 .zc{position:absolute;bottom:16px;left:16px;display:flex;flex-direction:column;gap:4px}
 .zb{width:26px;height:26px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;border-radius:4px;display:flex;align-items:center;justify-content:center}
 kbd{background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:9px;font-family:monospace}
+/* ── Mobile layout ── */
 /* ── Sample Flows drawer ── */
 .flows-btn{background:#6366f120;border:1px solid #6366f150;color:#818cf8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:99px;cursor:pointer;transition:background .15s;white-space:nowrap;margin-left:auto}
 .flows-btn:hover{background:#6366f130}
@@ -120,6 +121,35 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:3px;
 .io-link{font-size:11.5px;color:#34d399;white-space:normal;word-break:break-word;flex-basis:100%;padding-left:126px;line-height:1.4}
 .fstep-note{font-size:13px;color:#9aa5c8;padding:0 11px 10px;line-height:1.65;font-style:italic;border-top:1px solid var(--border)25;padding-top:8px;margin-top:2px}
 .fstep-arr{text-align:center;color:var(--dim);font-size:13px;padding:1px 0 2px}
+/* ── Mobile layout — must be last to win the cascade ── */
+@media (max-width:768px){
+  header{flex-wrap:wrap;gap:6px}
+  .flows-btn{margin-left:0}
+  .main{flex-direction:column}
+  #gc{height:55vh;flex:none}
+  #panel{width:100%;height:45vh;border-left:none;border-top:1px solid var(--border);flex-shrink:0}
+  #flows-drawer{width:100%;left:auto;right:-100%;transform:none;transition:right .25s ease}
+  #flows-drawer.open{right:0}
+  .fd-hdr{padding:11px 14px;display:flex;align-items:center;justify-content:space-between}
+  .fd-hdr>div{flex:1;min-width:0;overflow:hidden}
+  .fd-hdr-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fd-close{flex-shrink:0;font-size:28px;padding:0 8px;line-height:1}
+  .fd-body{padding:10px;overflow-x:hidden;box-sizing:border-box;width:100%}
+  .flow-acc{overflow:hidden;box-sizing:border-box}
+  .flow-acc-hd{padding:10px}
+  .flow-bd{padding:10px;box-sizing:border-box}
+  .flow-desc{word-break:break-word;overflow-wrap:break-word}
+  .fstep{overflow:hidden;box-sizing:border-box}
+  .fstep-hd{padding:8px 10px}
+  .fstep-call{padding:0 10px 8px}
+  .fstep-path{white-space:pre-wrap;word-break:break-all;overflow-wrap:break-word}
+  .fstep-io{padding:0 10px 9px}
+  .io-row{flex-wrap:wrap}
+  .io-n{min-width:80px;font-size:11px;flex-shrink:1}
+  .io-v{font-size:11px;word-break:break-all;min-width:0}
+  .io-link{padding-left:0;font-size:10.5px;word-break:break-word;width:100%}
+  .fstep-note{padding:8px 10px 10px;word-break:break-word}
+}
 </style>
 </head>
 <body>
